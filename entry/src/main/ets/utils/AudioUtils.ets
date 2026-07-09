@@ -1,6 +1,4 @@
-// C:/Users/pzl/PycharmProjects/语音助手/entry/src/main/ets/utils/AudioUtils.ets
 import fs from '@ohos.file.fs';
-import { util } from '@kit.ArkTS';
 
 export class AudioUtils {
   static async convertFlacToWav(flacPath: string, context?: Context, isRawfile: boolean = false): Promise<ArrayBuffer> {
@@ -17,7 +15,8 @@ export class AudioUtils {
   static async readWavFile(wavPath: string, context?: Context, isRawfile: boolean = false): Promise<ArrayBuffer> {
     console.info(`读取 WAV 文件: ${wavPath}`);
     try {
-      return await AudioUtils.readFile(wavPath, context, isRawfile);
+      const fileData: ArrayBuffer = await AudioUtils.readFile(wavPath, context, isRawfile);
+      return AudioUtils.extractWavPcmData(fileData);
     } catch (error) {
       console.error('WAV 读取失败:', error);
       throw new Error('WAV 读取失败');
@@ -29,7 +28,7 @@ export class AudioUtils {
       if (context && isRawfile) {
         const rawfilePath: string = path.replace('rawfile/', '');
         const rawFile: Uint8Array = await context.resourceManager.getRawFileContent(rawfilePath);
-        return rawFile.buffer;
+        return rawFile.buffer.slice(rawFile.byteOffset, rawFile.byteOffset + rawFile.byteLength);
       } else {
         const file: fs.File = fs.openSync(path, fs.OpenMode.READ_ONLY);
         const stat: fs.Stat = fs.statSync(path);
@@ -45,7 +44,7 @@ export class AudioUtils {
   }
 
   static decodeFlac(data: ArrayBuffer): ArrayBuffer {
-    console.info('解码 FLAC 音频数据');
+    console.info('校验 FLAC 音频数据');
     const view: DataView = new DataView(data);
     const size: number = data.byteLength;
 
@@ -61,52 +60,54 @@ export class AudioUtils {
     );
 
     if (magic !== 'fLaC') {
-      console.warn('不是有效的 FLAC 文件，尝试直接返回原始数据');
-      return data;
+      throw new Error('不是有效的 FLAC 文件');
     }
 
-    let offset: number = 4;
-    let isLastBlock: boolean = false;
+    throw new Error('当前仓库未实现真实 FLAC 解码，请先将评测样本转换为 PCM/WAV');
+  }
 
-    while (!isLastBlock && offset < size) {
-      const blockHeader: number = view.getUint8(offset);
-      isLastBlock = (blockHeader & 0x80) !== 0;
-      const blockType: number = blockHeader & 0x7F;
-      const blockLength: number = (view.getUint8(offset + 1) << 16) |
-        (view.getUint8(offset + 2) << 8) |
-        view.getUint8(offset + 3);
+  static extractWavPcmData(data: ArrayBuffer): ArrayBuffer {
+    const view: DataView = new DataView(data);
+    if (data.byteLength < 44) {
+      throw new Error('WAV 文件太小');
+    }
 
-      if (blockType === 0) {
-        const sampleRate: number = (view.getUint8(offset + 10) << 12) |
-          (view.getUint8(offset + 11) << 4) |
-          (view.getUint8(offset + 12) >> 4);
-        const channels: number = ((view.getUint8(offset + 12) >> 1) & 0x07) + 1;
-        const bitsPerSample: number = ((view.getUint8(offset + 12) & 0x01) << 4) |
-          ((view.getUint8(offset + 13) >> 4) & 0x0F) + 1;
-        const totalSamples: number = ((view.getUint8(offset + 17) & 0x0F) << 28) |
-          (view.getUint8(offset + 18) << 20) |
-          (view.getUint8(offset + 19) << 12) |
-          (view.getUint8(offset + 20) << 4) |
-          (view.getUint8(offset + 21) >> 4);
+    const riff: string = AudioUtils.readAscii(view, 0, 4);
+    const wave: string = AudioUtils.readAscii(view, 8, 4);
+    if (riff !== 'RIFF' || wave !== 'WAVE') {
+      throw new Error('不是有效的 WAV 文件');
+    }
 
-        console.info(`FLAC 信息: 采样率=${sampleRate}, 声道=${channels}, 位深=${bitsPerSample}, 样本数=${totalSamples}`);
+    let offset: number = 12;
+    while (offset + 8 <= data.byteLength) {
+      const chunkId: string = AudioUtils.readAscii(view, offset, 4);
+      const chunkSize: number = view.getUint32(offset + 4, true);
+      const chunkDataStart: number = offset + 8;
+      const chunkDataEnd: number = chunkDataStart + chunkSize;
 
-        const audioStartOffset: number = offset + blockLength + 4;
-        const audioDataSize: number = size - audioStartOffset;
-
-        if (audioDataSize > 0) {
-          const audioData: ArrayBuffer = new ArrayBuffer(audioDataSize);
-          const srcView: Uint8Array = new Uint8Array(data, audioStartOffset, audioDataSize);
-          const dstView: Uint8Array = new Uint8Array(audioData);
-          dstView.set(srcView);
-          return audioData;
-        }
+      if (chunkDataEnd > data.byteLength) {
+        throw new Error('WAV 数据块越界');
       }
 
-      offset += blockLength + 4;
+      if (chunkId === 'data') {
+        const pcmData: ArrayBuffer = new ArrayBuffer(chunkSize);
+        const sourceView: Uint8Array = new Uint8Array(data, chunkDataStart, chunkSize);
+        new Uint8Array(pcmData).set(sourceView);
+        return pcmData;
+      }
+
+      offset = chunkDataEnd + (chunkSize % 2);
     }
 
-    return data;
+    throw new Error('WAV 文件缺少 data 数据块');
+  }
+
+  private static readAscii(view: DataView, offset: number, length: number): string {
+    let result: string = '';
+    for (let index: number = 0; index < length; index++) {
+      result += String.fromCharCode(view.getUint8(offset + index));
+    }
+    return result;
   }
 
   static normalizeAudio(audioData: Float32Array): Float32Array {

@@ -1,9 +1,9 @@
-// C:/Users/pzl/PycharmProjects/语音助手/entry/src/main/ets/utils/DatasetLoader.ets
 import { AudioUtils } from './AudioUtils';
 import fs from '@ohos.file.fs';
 import { util } from '@kit.ArkTS';
 
 export interface DatasetSample {
+  sampleId: string;
   audioPath: string;
   transcript: string;
   speakerId: string;
@@ -58,7 +58,7 @@ export class DatasetLoader {
 
   private async loadTranscripts(): Promise<void> {
     console.info('[DatasetLoader] 加载转录文本文件');
-    const transcriptFiles: string[] = await this.findTranscriptFiles();
+    const transcriptFiles: string[] = (await this.findTranscriptFiles()).sort((left: string, right: string) => left.localeCompare(right));
     console.info(`[DatasetLoader] 找到 ${transcriptFiles.length} 个转录文件`);
 
     if (transcriptFiles.length > 0) {
@@ -182,8 +182,9 @@ export class DatasetLoader {
   }
 
   private async scanAudioFiles(): Promise<void> {
-    const audioFiles: string[] = await this.findAudioFiles();
+    const audioFiles: string[] = (await this.findAudioFiles()).sort((left: string, right: string) => left.localeCompare(right));
     console.info(`[DatasetLoader] 找到 ${audioFiles.length} 个音频文件`);
+    let skippedWithoutTranscript: number = 0;
 
     if (audioFiles.length > 0) {
       console.info(`[DatasetLoader] 第一个音频文件：${audioFiles[0]}`);
@@ -192,8 +193,17 @@ export class DatasetLoader {
     for (const audioPath of audioFiles) {
       const sample: DatasetSample | null = this.parseAudioPath(audioPath);
       if (sample) {
+        if (!sample.transcript) {
+          skippedWithoutTranscript++;
+          console.warn(`[DatasetLoader] 跳过缺少转录文本的样本：${sample.sampleId}`);
+          continue;
+        }
         this.samples.push(sample);
       }
+    }
+
+    if (skippedWithoutTranscript > 0) {
+      console.warn(`[DatasetLoader] 共跳过 ${skippedWithoutTranscript} 个缺少转录文本的样本`);
     }
   }
 
@@ -266,19 +276,21 @@ export class DatasetLoader {
   }
 
   private parseAudioPath(audioPath: string): DatasetSample | null {
-    const fileName: string = audioPath.split('/').pop() || '';
+    const normalizedPath: string = audioPath.replace(/\\/g, '/');
+    const fileName: string = normalizedPath.split('/').pop() || '';
     const parts: string[] = fileName.replace('.flac', '').replace('.wav', '').split('-');
 
     if (parts.length >= 3) {
       const speakerId: string = parts[0];
       const chapterId: string = parts[1];
       const utteranceId: string = parts[2];
-      const fullId: string = `${speakerId}-${chapterId}-${utteranceId}`;
+      const sampleId: string = `${speakerId}-${chapterId}-${utteranceId}`;
 
-      const transcript: string = this.transcripts.get(fullId) || '';
+      const transcript: string = this.transcripts.get(sampleId) || '';
 
       return {
-        audioPath,
+        sampleId,
+        audioPath: normalizedPath,
         transcript,
         speakerId,
         chapterId,
@@ -292,6 +304,15 @@ export class DatasetLoader {
   getSample(index: number): DatasetSample | null {
     if (index >= 0 && index < this.samples.length) {
       return this.samples[index];
+    }
+    return null;
+  }
+
+  getSampleById(sampleId: string): DatasetSample | null {
+    for (let index: number = 0; index < this.samples.length; index++) {
+      if (this.samples[index].sampleId === sampleId) {
+        return this.samples[index];
+      }
     }
     return null;
   }
@@ -316,8 +337,21 @@ export class DatasetLoader {
     return this.samples.length;
   }
 
-  getTranscript(utteranceId: string): string {
-    return this.transcripts.get(utteranceId) || '';
+  getTranscript(sampleIdOrUtteranceId: string): string {
+    const transcript: string | undefined = this.transcripts.get(sampleIdOrUtteranceId);
+    if (transcript) {
+      return transcript;
+    }
+
+    if (!sampleIdOrUtteranceId.includes('-')) {
+      for (const [sampleId, text] of this.transcripts.entries()) {
+        if (sampleId.endsWith(`-${sampleIdOrUtteranceId}`)) {
+          return text;
+        }
+      }
+    }
+
+    return '';
   }
 
   async loadAudioData(sample: DatasetSample): Promise<Float32Array> {

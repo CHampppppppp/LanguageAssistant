@@ -30,9 +30,21 @@ export class LibriSpeechEvaluator {
       let metric: WordAccuracyResult = AccuracyMetric.calculateWordAccuracy('', sample.transcript);
 
       try {
+        if (!sample.transcript) {
+          throw new Error('缺少标准转录文本');
+        }
+
         const audioData: Float32Array = await this.datasetLoader.loadAudioData(sample);
+        if (audioData.length === 0) {
+          throw new Error('音频数据为空或未完成解码');
+        }
+
         const audioBuffer: ArrayBuffer = this.float32ToArrayBuffer(audioData);
         recognizedText = await this.asrService.recognize(audioBuffer);
+        if (!recognizedText) {
+          throw new Error('ASR 未返回识别文本');
+        }
+
         metric = AccuracyMetric.calculateWordAccuracy(recognizedText, sample.transcript);
         success = metric.wordAccuracy >= 0.93;
         reason = success ? 'word accuracy >= 93%' : 'word accuracy < 93%';
@@ -45,7 +57,7 @@ export class LibriSpeechEvaluator {
       totalResponseTime += responseTime;
 
       details.push({
-        sampleId: `${sample.speakerId}-${sample.chapterId}-${sample.utteranceId}`,
+        sampleId: sample.sampleId,
         recognizedText,
         groundTruth: sample.transcript,
         wordAccuracy: metric.wordAccuracy,

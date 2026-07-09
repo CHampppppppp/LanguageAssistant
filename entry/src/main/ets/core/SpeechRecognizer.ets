@@ -4,6 +4,8 @@ import { AsrService } from './asr/AsrService';
 import { IFlytekAsrService } from './asr/IFlytekAsrService';
 import { createChineseIFlytekBusiness } from './asr/IFlytekTypes';
 
+const MIN_VALID_PCM16_BYTES: number = 2;
+
 export class SpeechRecognizer {
   private audioRecorder: AudioRecorder;
   private asrService: AsrService;
@@ -36,16 +38,24 @@ export class SpeechRecognizer {
 
     try {
       const validBuffer: ArrayBuffer = this.normalizePcm16Buffer(audioBuffer);
-      if (validBuffer.byteLength === 0) {
+      if (validBuffer.byteLength < MIN_VALID_PCM16_BYTES) {
         console.warn('[SpeechRecognizer] 音频数据为空或长度无效');
+        this.audioRecorder.markFailed();
         return '';
       }
 
+      this.audioRecorder.markRecognizing();
       const result: string = await this.asrService.recognize(validBuffer);
       const duration: number = Date.now() - startTime;
       console.info(`识别耗时: ${duration}ms`);
+      if (result) {
+        this.audioRecorder.markCompleted();
+      } else {
+        this.audioRecorder.markFailed();
+      }
       return result;
     } catch (error) {
+      this.audioRecorder.markFailed();
       console.error('语音识别失败:', error);
       return '';
     }
