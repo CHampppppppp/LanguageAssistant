@@ -1,7 +1,17 @@
 import { VoiceCommand } from '../../model/VoiceCommand';
 import { CommandExecutionResult, CommandExecutionStatus } from './CommandResult';
+import { TimeProvider, TimeQueryService } from './TimeQuery';
+import { VolumeControlService, VolumeController, VolumeDirection } from './VolumeControl';
 
 export class MockCommandExecutor {
+  private timeQueryService: TimeQueryService;
+  private volumeControlService: VolumeControlService;
+
+  constructor(timeProvider?: TimeProvider, volumeController?: VolumeController) {
+    this.timeQueryService = timeProvider ? new TimeQueryService(timeProvider) : new TimeQueryService();
+    this.volumeControlService = volumeController ? new VolumeControlService(volumeController) : new VolumeControlService();
+  }
+
   async execute(command: VoiceCommand): Promise<CommandExecutionResult> {
     switch (command.intent) {
       case 'time_query':
@@ -13,9 +23,9 @@ export class MockCommandExecutor {
       case 'next_music':
         return this.simulate(command.intent, '模拟切换到下一首歌曲');
       case 'volume_up':
-        return this.simulate(command.intent, '模拟调大系统音量');
+        return this.adjustVolume(command.intent, VolumeDirection.UP);
       case 'volume_down':
-        return this.simulate(command.intent, '模拟调小系统音量');
+        return this.adjustVolume(command.intent, VolumeDirection.DOWN);
       case 'open_app':
         return this.simulate(command.intent, command.entities.get('app_name') ? `模拟打开${command.entities.get('app_name')}` : '请指定要打开的应用名称');
       case 'close_app':
@@ -35,16 +45,16 @@ export class MockCommandExecutor {
   }
 
   private queryTime(intent: string): CommandExecutionResult {
-    const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-
     return {
       status: CommandExecutionStatus.SUCCESS,
-      message: `现在是${hours}点${minutes}分`,
+      message: this.timeQueryService.getCurrentTimeMessage(),
       intent,
       isSimulated: false
     };
+  }
+
+  private async adjustVolume(intent: string, direction: VolumeDirection): Promise<CommandExecutionResult> {
+    return this.volumeControlService.adjust(direction, intent);
   }
 
   private simulate(intent: string, message: string): CommandExecutionResult {
