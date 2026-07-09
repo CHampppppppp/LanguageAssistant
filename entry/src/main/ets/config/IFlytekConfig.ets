@@ -7,9 +7,9 @@ interface IFlytekConfigType {
 }
 
 export const IFlytekConfig: IFlytekConfigType = {
-  appId: '',
-  apiKey: '',
-  apiSecret: '',
+  appId: '35f91fdb',
+  apiKey: 'f538f41284b6541860033277be894285',
+  apiSecret: 'YTdmNjVlOGZiN2FjNDNhYjA4MzJhMTVm',
   apiUrl: 'https://api.xf-yun.com/v1/private/sf8e6aca1',
   apiHost: 'api.xf-yun.com'
 };

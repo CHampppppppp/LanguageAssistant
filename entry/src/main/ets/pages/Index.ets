@@ -118,10 +118,10 @@ struct Index {
           title: '语音转文字原始结果',
           value: this.rawTranscriptText,
           placeholder: '语音识别的文字将显示在这里...',
-          backgroundColor: '#F0F4FF',
-          borderColor: '#C5CAE9',
+          panelBackgroundColor: '#F0F4FF',
+          panelBorderColor: '#C5CAE9',
           textColor: '#333333',
-          height: 100,
+          panelHeight: 100,
           editable: true
         })
 
@@ -129,10 +129,10 @@ struct Index {
           title: '识别结果',
           value: this.recognitionText,
           placeholder: '暂无识别结果',
-          backgroundColor: '#F8F9FA',
-          borderColor: '#E8E8E8',
+          panelBackgroundColor: '#F8F9FA',
+          panelBorderColor: '#E8E8E8',
           textColor: '#333333',
-          height: 60,
+          panelHeight: 60,
           editable: false
         })
 
@@ -140,10 +140,10 @@ struct Index {
           title: '指令执行结果（含模拟能力）',
           value: this.commandResult,
           placeholder: '暂无指令执行结果',
-          backgroundColor: '#FFF8E1',
-          borderColor: '#FFE082',
+          panelBackgroundColor: '#FFF8E1',
+          panelBorderColor: '#FFE082',
           textColor: '#555555',
-          height: 60,
+          panelHeight: 60,
           editable: false
         })
 
@@ -151,10 +151,10 @@ struct Index {
           title: '文字反馈',
           value: this.feedbackText,
           placeholder: '暂无反馈',
-          backgroundColor: '#E8F5E9',
-          borderColor: '#A5D6A7',
+          panelBackgroundColor: '#E8F5E9',
+          panelBorderColor: '#A5D6A7',
           textColor: '#2E7D32',
-          height: 60,
+          panelHeight: 60,
           editable: false
         })
 
