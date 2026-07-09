@@ -1,0 +1,12 @@
+{
+  "name": "languageassistant",
+  "version": "1.0.0",
+  "description": "基于语音识别的智能语音助手系统",
+  "main": "",
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {},
+  "devDependencies": {
+    "@ohos/hypium": "1.0.6"
+  }
+}

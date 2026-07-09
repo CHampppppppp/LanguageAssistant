@@ -1,0 +1,24 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "智能语音助手模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "语音助手入口"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "智能语音助手"
+    },
+    {
+      "name": "microphone_reason",
+      "value": "用于语音识别功能"
+    },
+    {
+      "name": "internet_reason",
+      "value": "用于调用语音识别 API"
+    }
+  ]
+}

@@ -1,0 +1,375 @@
+# 项目根目录说明
+
+这份文档给鸿蒙新手看。先记住一句话：真正要写业务代码，主要进 `entry/src/main/ets/`；不要从根目录的构建缓存和 IDE 配置开始改。
+
+## 根目录文件夹
+
+### `entry/`
+
+主应用模块，也是最重要的目录。可以把它理解成“这个 App 的主体”。
+
+常看位置：
+
+- `entry/src/main/ets/pages/`：页面 UI，目前首页是 `Index.ets`。
+- `entry/src/main/ets/viewmodel/`：页面和业务之间的编排层。
+- `entry/src/main/ets/core/`：核心能力，如语音识别、语义理解、指令执行、语音反馈。
+- `entry/src/main/ets/model/`：数据模型和 Transformer 相关代码。
+- `entry/src/main/ets/utils/`：数据集、音频、性能统计等工具类。
+- `entry/src/main/resources/`：图片、颜色、字符串、rawfile 数据集等资源。
+- `entry/src/test/`：本地单元测试。
+- `entry/src/ohosTest/`：设备/模拟器测试。
+
+平时开发语音助手功能，优先看这里。
+
+### `AppScope/`
+
+应用级配置目录，描述整个 HarmonyOS 应用的全局信息。
+
+当前重点文件：
+
+- `AppScope/app.json5`：应用包名、版本号、厂商、应用图标和应用名等。
+
+一般不频繁改。需要改包名、版本号、应用名时才看这里。
+
+### `hvigor/`
+
+Hvigor 是 HarmonyOS 工程的构建工具。这个目录放构建工具的配置。
+
+当前重点文件：
+
+- `hvigor/hvigor-config.json5`：构建执行、日志、调试等配置。
+
+新手先不要随便改这里。构建报错时再结合错误信息处理。
+
+### `oh_modules/`
+
+项目级依赖目录，类似前端项目里的 `node_modules`。
+
+这是安装依赖后生成的目录，不是业务代码。一般不手改，也不应该提交进 git。
+
+### `.hvigor/`
+
+Hvigor 构建缓存和中间产物目录。
+
+这是自动生成的，不是源码。构建异常时可以考虑清理，但删除目录属于清理操作，先确认再做。
+
+### `.idea/`
+
+DevEco Studio / JetBrains 系列 IDE 的项目配置目录。
+
+里面记录 IDE 工作区、模块、预览器等信息。一般不作为业务代码依据。
+
+### `.appanalyzer/`
+
+DevEco 或鸿蒙工具生成的应用分析配置/缓存目录。
+
+一般不用手动修改。除非在做包体分析、性能分析、应用扫描。
+
+### `.codeartsdoer/`
+
+CodeArts/AI 辅助开发相关配置目录。
+
+它和鸿蒙应用运行主流程没有直接关系。新手开发业务功能时可以先忽略。
+
+### `.git/`
+
+Git 版本库内部目录。
+
+不要手动编辑这个目录。需要版本管理时使用 `git status`、`git add`、`git commit` 等命令，不直接改 `.git` 里的文件。
+
+## 根目录常见文件
+
+### `AGENTS.md`
+
+项目协作规则。以后改代码前先看它。
+
+它规定了：
+
+- 项目目标和验收指标。
+- 目录怎么放。
+- 密钥不能硬编码。
+- LibriSpeech、讯飞 API、Transformer 怎么处理。
+- 改完要怎么验证。
+
+### `PROJECT_STRUCTURE.md`
+
+就是当前这份文档。它负责解释目录用途，帮助新人快速知道哪里该看、哪里别乱动。
+
+### `WORK_DIVISION.md`
+
+项目分工说明，记录三位同学分别负责什么、工作量比例是多少、每个人需要交付什么。
+
+### `.env`
+
+本地真实环境变量文件，用来放讯飞 API 这类敏感配置。
+
+注意：
+
+- 不要提交。
+- 不要截图发群。
+- 不要把里面的值复制进代码。
+
+### `.env.example`
+
+环境变量示例文件，只放变量名和占位符。
+
+别人拿到项目后，可以参考它创建自己的 `.env`。这个文件可以提交，因为里面不能有真实密钥。
+
+### `.gitignore`
+
+告诉 Git 哪些文件不要纳入版本管理。
+
+当前重点：
+
+- 忽略 `.env`，避免真实密钥进 git。
+- 忽略 `build`、`.hvigor`、`oh_modules` 等生成目录。
+- 保留 `.env.example`，方便协作。
+
+### `oh-package.json5`
+
+HarmonyOS/OpenHarmony 项目级包配置。
+
+可以粗略理解为鸿蒙项目里的“依赖声明文件”。根目录这个文件描述整个项目层面的依赖和开发依赖。
+
+### `oh-package-lock.json5`
+
+依赖锁定文件。
+
+它记录依赖的具体版本，保证大家安装出来的依赖尽量一致。一般不要手写，依赖安装工具会更新它。
+
+### `build-profile.json5`
+
+项目级构建配置。
+
+当前它描述：
+
+- App 产品配置。
+- SDK 版本。
+- 构建模式。
+- 模块列表，指向 `entry`。
+
+如果新增模块、改目标 SDK、改构建配置，才需要看这里。
+
+### `hvigorfile.ts`
+
+项目级 Hvigor 构建脚本入口。
+
+一般由 DevEco Studio 维护。新手不需要从这里开始。
+
+### `code-linter.json5`
+
+代码检查规则配置。
+
+它配置 ArkTS 文件检查范围、忽略目录、安全规则等。后续如果要统一代码质量和安全检查，会用到它。
+
+### `local.properties`
+
+本机开发环境配置，通常和本地 SDK 路径、工具路径相关。
+
+它属于本机文件，不应该提交。不同电脑上的内容可能不同。
+
+## `entry/` 里面再看一层
+
+### `entry/src/main/module.json5`
+
+模块配置文件，很关键。
+
+它声明：
+
+- 当前模块叫 `entry`。
+- 入口 Ability 是 `EntryAbility`。
+- 页面列表来自 `resources/base/profile/main_pages.json`。
+- 申请了麦克风权限和网络权限。
+
+语音助手需要录音和访问讯飞 API，所以这里会看到 `MICROPHONE` 和 `INTERNET`。
+
+### `entry/src/main/ets/entryability/`
+
+应用入口 Ability。
+
+可以理解成鸿蒙应用启动后，先由这里加载页面。当前 `EntryAbility.ets` 会加载 `pages/Index`。
+
+### `entry/src/main/ets/pages/`
+
+页面层。
+
+当前主要页面：
+
+- `Index.ets`：语音助手首页，显示识别结果、指令执行结果、反馈、准确率、响应时间，提供开始识别和数据集测试按钮。
+
+规则：页面只做 UI 和交互，不应该写复杂业务算法。
+
+### `entry/src/main/ets/viewmodel/`
+
+页面编排层。
+
+当前主要文件：
+
+- `VoiceAssistantViewModel.ets`：串联录音、识别、语义理解、命令执行、性能统计。
+
+页面按钮点下去后，通常应该调用 ViewModel，而不是直接调用底层 API。
+
+### `entry/src/main/ets/core/`
+
+核心业务模块。
+
+当前文件：
+
+- `SpeechRecognizer.ets`：录音和调用讯飞 API。
+- `SemanticUnderstanding.ets`：把识别文字转成意图。
+- `CommandExecutor.ets`：执行指令，目前很多结果还是模拟文案。
+- `VoiceFeedback.ets`：语音反馈，目前还只是日志/占位。
+
+以后真正完善功能，主要会改这里。
+
+### `entry/src/main/ets/model/`
+
+模型和领域对象。
+
+当前文件：
+
+- `VoiceCommand.ets`：语音指令对象，包含意图、原始文本、实体、置信度等。
+- `TransformerModel.ets`：Transformer 相关占位实现，目前还没有真正接入主流程。
+
+### `entry/src/main/ets/utils/`
+
+工具模块。
+
+当前文件：
+
+- `DatasetLoader.ets`：加载 LibriSpeech 数据集和转录文本。
+- `AudioUtils.ets`：音频读取、转换、归一化等工具。
+- `PerformanceMonitor.ets`：记录准确率、响应时间等指标。
+
+### `entry/src/main/ets/config/`
+
+配置模块。
+
+注意这里不能放真实密钥。当前 `IFlytekConfig.ets` 只允许放非敏感默认值和校验逻辑。
+
+真实讯飞配置应该来自 `.env` 或系统安全存储，不要写死在 ArkTS 源码里。
+
+### `entry/src/main/resources/`
+
+资源目录。
+
+常见子目录：
+
+- `base/element/`：颜色、字符串、数字等资源。
+- `base/media/`：图片、图标等媒体资源。
+- `base/profile/`：页面路由、备份配置等 profile 文件。
+- `dark/`：深色模式资源。
+- `rawfile/`：原始文件资源，本项目里放了 LibriSpeech 数据集。
+
+注意：LibriSpeech 数据集体积很大，不跟 git 上传。新同学拉项目后，需要自己把数据集放到 `entry/src/main/resources/rawfile/dev-clean/LibriSpeech/`，否则数据集测试入口会找不到样本。
+
+### `entry/src/test/`
+
+本地单元测试目录。
+
+现在里面还有模板测试，不能算真正覆盖项目逻辑。后续要补语义理解、命令执行、性能统计等测试。
+
+### `entry/src/ohosTest/`
+
+设备或模拟器测试目录。
+
+用于验证需要鸿蒙运行环境的能力，比如 Ability、权限、设备相关行为。
+
+### `entry/build/`
+
+`entry` 模块的构建产物目录。
+
+这是自动生成的，不是源码。不要把业务逻辑写在这里，也不要用这里的文件当修改入口。
+
+### `entry/.preview/`
+
+DevEco 页面预览相关生成目录。
+
+不是业务代码。
+
+### `entry/oh_modules/`
+
+`entry` 模块自己的依赖目录。
+
+自动生成，不手改。
+
+### `entry/oh-package.json5`
+
+`entry` 模块的依赖配置。
+
+如果只有 `entry` 这个模块要用某个依赖，通常会配在这里。
+
+### `entry/build-profile.json5`
+
+`entry` 模块自己的构建配置。
+
+和根目录 `build-profile.json5` 不同，这个更偏模块级。
+
+### `entry/hvigorfile.ts`
+
+`entry` 模块的 Hvigor 构建脚本。
+
+一般由工程模板生成，除非明确知道要改构建流程，否则不要动。
+
+### `entry/obfuscation-rules.txt`
+
+混淆规则文件。
+
+发布 release 包时可能用到。新手阶段先不要乱改，否则可能导致运行时找不到类名、属性名或 API。
+
+## 新手改代码从哪里开始
+
+按需求类型找入口：
+
+- 改页面样式：看 `entry/src/main/ets/pages/Index.ets`。
+- 改按钮点击后的流程：看 `VoiceAssistantViewModel.ets`。
+- 改语音识别：看 `core/SpeechRecognizer.ets`。
+- 改语义规则：看 `core/SemanticUnderstanding.ets`。
+- 改指令执行：看 `core/CommandExecutor.ets`。
+- 改语音反馈：看 `core/VoiceFeedback.ets`。
+- 改 LibriSpeech 评测：看 `utils/DatasetLoader.ets` 和 `utils/AudioUtils.ets`。
+- 改准确率/响应时间统计：看 `utils/PerformanceMonitor.ets`。
+- 改权限：看 `entry/src/main/module.json5`。
+- 改应用名/版本号：看 `AppScope/app.json5`。
+
+## 不建议新手直接动的地方
+
+- `.git/`
+- `.hvigor/`
+- `.idea/`
+- `oh_modules/`
+- `entry/build/`
+- `entry/.preview/`
+- `entry/oh_modules/`
+- `oh-package-lock.json5`
+- `entry/oh-package-lock.json5`
+- `hvigor/`
+- `hvigorfile.ts`
+- `entry/hvigorfile.ts`
+
+这些大多是工具、依赖、缓存、构建产物。不是不能动，而是动之前要知道后果。
+
+## 一句话版地图
+
+- 想看 App 从哪启动：`entry/src/main/ets/entryability/EntryAbility.ets`
+- 想看首页：`entry/src/main/ets/pages/Index.ets`
+- 想看业务主流程：`entry/src/main/ets/viewmodel/VoiceAssistantViewModel.ets`
+- 想看语音识别：`entry/src/main/ets/core/SpeechRecognizer.ets`
+- 想看指令理解和执行：`entry/src/main/ets/core/SemanticUnderstanding.ets`、`entry/src/main/ets/core/CommandExecutor.ets`
+- 想看数据集：`entry/src/main/resources/rawfile/`
+- 想看权限：`entry/src/main/module.json5`
+- 想看应用配置：`AppScope/app.json5`
+
+## 数据集怎么处理
+
+LibriSpeech 是项目要求使用的数据集，但它不是源码。
+
+本项目约定：
+
+- 数据集本地路径：`entry/src/main/resources/rawfile/dev-clean/LibriSpeech/`
+- 数据集不提交到 git。
+- `.gitignore` 已忽略这个目录。
+- 代码和文档可以提交，原始音频文件不要提交。
+- 如果需要共享数据集，用网盘、OpenSLR 原始下载地址或课程平台资源，不用 git 仓库传。
+
+如果数据集不存在，App 的普通页面仍然应该能打开，但“数据集测试”功能会缺少样本。

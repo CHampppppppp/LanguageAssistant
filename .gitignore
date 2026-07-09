@@ -1,0 +1,21 @@
+/node_modules
+/oh_modules
+/local.properties
+/.env
+/.env.*
+!/.env.example
+/.idea
+**/build
+/.hvigor
+.cxx
+/.clangd
+/.clang-format
+/.clang-tidy
+**/.test
+/.appanalyzer
+
+# 大体积数据集资源不进 git；按 PROJECT_STRUCTURE.md 放到本地对应目录
+/entry/src/main/resources/rawfile/dev-clean/LibriSpeech/
+
+# 敏感配置文件
+entry/src/main/ets/config/IFlytekConfig.ets
