@@ -34,8 +34,9 @@
 根目录：
 
 - `AGENTS.md`：项目协作与工程规则，改实践前先改这里。
-- `PROJECT_STRUCTURE.md`：面向项目成员的目录说明，解释根目录文件夹和常见配置文件用途。
-- `WORK_DIVISION.md`：项目分工说明，记录三位同学的职责、工作量比例和交付物。
+- `docs/`：项目说明文档目录，放给组员看的项目介绍、分工、协作说明等。
+- `docs/项目介绍.md`：面向项目成员的目录说明，解释根目录文件夹和常见配置文件用途。
+- `docs/分工文档.md`：项目分工说明，记录三位同学的职责、工作量比例和交付物。
 - `oh-package.json5`、`oh-package-lock.json5`：项目级 OpenHarmony/HarmonyOS 包配置。
 - `build-profile.json5`、`hvigorfile.ts`、`hvigor/`：构建配置。
 - `.env`：本地敏感配置，只允许本机使用，不允许写入代码或日志。
@@ -45,15 +46,23 @@
 `entry/src/main/ets/`：
 
 - `pages/`：ArkUI 页面，只负责界面展示、交互状态、事件转发，不写 API 签名、音频解码、业务规则。
+- `components/`：可复用 ArkUI 组件。页面超过 400 行时优先把展示型 Builder 或区域拆到这里。
 - `viewmodel/`：页面编排层，负责串联语音采集、识别、语义理解、执行、反馈、性能统计。
 - `core/`：核心业务能力。
-  - `SpeechRecognizer` 或拆分后的 ASR 服务：语音采集与语音转文字。
-  - `SemanticUnderstanding`：意图识别、实体抽取、置信度计算。
-  - `CommandExecutor`：指令执行，不应长期停留在纯文案模拟。
-  - `VoiceFeedback`：语音反馈，不应长期停留在 `console.info`。
-- `model/`：领域模型和 Transformer 相关模型结构。未真正接入主流程的模型不得在 UI 中宣传为已生效。
+  - `audio/`：录音状态机、麦克风采集、音频缓冲，不写 ASR API 签名。
+  - `asr/`：语音转文字服务边界。讯飞请求构造、签名、响应解析放这里，页面和 ViewModel 不直接拼 API。
+  - `nlu/`：意图识别、实体抽取、置信度计算。
+  - `command/`：指令执行和执行结果类型。模拟能力必须在命名或结果中标明。
+  - `feedback/`：文字反馈、TTS 或系统播报能力。未接入 TTS 时必须命名为文字反馈或模拟语音反馈。
+  - `evaluation/`：LibriSpeech 评测链路、准确率/WER/响应时间统计，不与实时中文交互链路混用。
+- `model/`：领域模型和 Transformer 实验模型结构。未真正接入主流程的模型不得在 UI 中宣传为已生效。
 - `utils/`：数据集加载、音频处理、性能统计等通用工具。
 - `config/`：只放非敏感配置。不得硬编码真实 `appId`、`apiKey`、`apiSecret`、token、密码。
+
+兼容规则：
+
+- 根 `core/*.ets` 旧文件允许短期作为兼容入口，但新增业务代码优先放入 `core/audio`、`core/asr`、`core/nlu`、`core/command`、`core/feedback`、`core/evaluation`。
+- 已确认无引用的旧入口要先在文档中列出清理计划，再由 Champ 确认后删除。
 
 `entry/src/main/resources/`：
 
@@ -209,7 +218,7 @@
 
 P0：
 
-- 移除硬编码讯飞密钥并轮换。
+- 轮换曾经进入源码的讯飞密钥，并完成安全配置读取。
 - 修录音开始/停止状态机。
 - 明确 LibriSpeech 英文评测与中文交互链路的关系。
 

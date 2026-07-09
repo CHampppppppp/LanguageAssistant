@@ -14,8 +14,7 @@
 **/.test
 /.appanalyzer
 
-# 大体积数据集资源不进 git；按 PROJECT_STRUCTURE.md 放到本地对应目录
+# 大体积数据集资源不进 git；按 docs/项目介绍.md 放到本地对应目录
 /entry/src/main/resources/rawfile/dev-clean/LibriSpeech/
 
-# 敏感配置文件
-entry/src/main/ets/config/IFlytekConfig.ets
+# 敏感配置文件只允许放在 .env 或系统安全存储；config/*.ets 只能提交非敏感占位和读取逻辑
