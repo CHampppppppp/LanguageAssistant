@@ -50,13 +50,18 @@ class FakeAudioRecorder extends AudioRecorder {
 class FakeAsrService implements AsrService {
   lastBufferLength: number = 0;
   private readonly textToReturn: string;
+  private readonly shouldThrow: boolean;
 
-  constructor(textToReturn: string) {
+  constructor(textToReturn: string, shouldThrow: boolean = false) {
     this.textToReturn = textToReturn;
+    this.shouldThrow = shouldThrow;
   }
 
   async recognize(audioBuffer: ArrayBuffer): Promise<string> {
     this.lastBufferLength = audioBuffer.byteLength;
+    if (this.shouldThrow) {
+      throw new Error('mock asr failure');
+    }
     return this.textToReturn;
   }
 }
@@ -73,6 +78,7 @@ export default function speechRecognizerTest() {
       expect(result).assertEqual('hello');
       expect(asrService.lastBufferLength).assertEqual(2);
       expect(recorder.getState()).assertEqual(RecordingState.COMPLETED);
+      expect(recognizer.getLastErrorMessage()).assertEqual('');
     });
 
     it('marks failed state when audio buffer is empty', 0, async () => {
@@ -85,6 +91,7 @@ export default function speechRecognizerTest() {
       expect(result).assertEqual('');
       expect(asrService.lastBufferLength).assertEqual(0);
       expect(recorder.getState()).assertEqual(RecordingState.FAILED);
+      expect(recognizer.getLastErrorMessage()).assertEqual('音频数据为空或长度无效');
     });
 
     it('delegates recording start and stop to audio recorder', 0, async () => {
@@ -98,6 +105,17 @@ export default function speechRecognizerTest() {
       expect(recorder.startCalled).assertTrue();
       expect(recorder.stopCalled).assertTrue();
       expect(recordedBuffer.byteLength).assertEqual(4);
+    });
+
+    it('stores the latest asr error message on failure', 0, async () => {
+      const recorder: FakeAudioRecorder = new FakeAudioRecorder();
+      const recognizer: SpeechRecognizer = new SpeechRecognizer(recorder, new FakeAsrService('', true));
+
+      const result: string = await recognizer.recognize(new Uint8Array([1, 2]).buffer);
+
+      expect(result).assertEqual('');
+      expect(recorder.getState()).assertEqual(RecordingState.FAILED);
+      expect(recognizer.getLastErrorMessage()).assertContain('mock asr failure');
     });
   });
 }

@@ -13,9 +13,12 @@ export default function performanceMonitorTest() {
 
       expect(Math.round(metrics.recognitionAccuracy * 100) / 100).assertEqual(87.5);
       expect(metrics.avgResponseTime).assertEqual(1500);
+      expect(metrics.p95ResponseTime).assertEqual(1800);
       expect(metrics.maxResponseTime).assertEqual(1800);
       expect(metrics.minResponseTime).assertEqual(1200);
       expect(metrics.totalRequests).assertEqual(2);
+      expect(metrics.successCount).assertEqual(1);
+      expect(metrics.failureCount).assertEqual(1);
       expect(metrics.successRate).assertEqual(50);
       expect(monitor.isAccuracyTargetMet()).assertFalse();
       expect(monitor.isResponseTimeTargetMet()).assertTrue();
@@ -31,9 +34,12 @@ export default function performanceMonitorTest() {
 
       expect(metrics.recognitionAccuracy).assertEqual(0);
       expect(metrics.avgResponseTime).assertEqual(0);
+      expect(metrics.p95ResponseTime).assertEqual(0);
       expect(metrics.maxResponseTime).assertEqual(0);
       expect(metrics.minResponseTime).assertEqual(0);
       expect(metrics.totalRequests).assertEqual(0);
+      expect(metrics.successCount).assertEqual(0);
+      expect(metrics.failureCount).assertEqual(0);
       expect(metrics.successRate).assertEqual(0);
     });
   });

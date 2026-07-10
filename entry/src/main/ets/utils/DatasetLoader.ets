@@ -11,12 +11,31 @@ export interface DatasetSample {
   utteranceId: string;
 }
 
+export interface DatasetLoadSummary {
+  transcriptCount: number;
+  audioFileCount: number;
+  matchedSampleCount: number;
+  skippedWithoutTranscriptCount: number;
+  hasFlacSamples: boolean;
+  hasWavSamples: boolean;
+  loadDurationMs: number;
+}
+
 export class DatasetLoader {
   private datasetPath: string = '';
   private samples: DatasetSample[] = [];
   private transcripts: Map<string, string> = new Map();
   private context: Context | undefined = undefined;
   private isRawfile: boolean = false;
+  private lastLoadSummary: DatasetLoadSummary = {
+    transcriptCount: 0,
+    audioFileCount: 0,
+    matchedSampleCount: 0,
+    skippedWithoutTranscriptCount: 0,
+    hasFlacSamples: false,
+    hasWavSamples: false,
+    loadDurationMs: 0
+  };
 
   constructor(datasetPath: string, context?: Context) {
     this.datasetPath = datasetPath;
@@ -26,16 +45,27 @@ export class DatasetLoader {
   }
 
   async loadDataset(): Promise<DatasetSample[]> {
+    const startedAt: number = Date.now();
     console.info(`[DatasetLoader] 开始加载数据集: ${this.datasetPath}`);
     console.info(`[DatasetLoader] Context 是否存在: ${this.context ? '是' : '否'}`);
 
     this.samples = [];
     this.transcripts = new Map();
+    this.lastLoadSummary = {
+      transcriptCount: 0,
+      audioFileCount: 0,
+      matchedSampleCount: 0,
+      skippedWithoutTranscriptCount: 0,
+      hasFlacSamples: false,
+      hasWavSamples: false,
+      loadDurationMs: 0
+    };
 
     try {
       console.info('[DatasetLoader] 开始加载转录文件...');
       await this.loadTranscripts();
       console.info(`[DatasetLoader] 转录文件加载完成，找到 ${this.transcripts.size} 个转录`);
+      this.lastLoadSummary.transcriptCount = this.transcripts.size;
 
       console.info('[DatasetLoader] 开始扫描音频文件...');
       await this.scanAudioFiles();
@@ -50,6 +80,9 @@ export class DatasetLoader {
       }
     } catch (error) {
       console.error(`[DatasetLoader] 数据集加载失败: ${error}`);
+    } finally {
+      this.lastLoadSummary.matchedSampleCount = this.samples.length;
+      this.lastLoadSummary.loadDurationMs = Date.now() - startedAt;
     }
 
     console.info(`[DatasetLoader] 最终结果：共 ${this.samples.length} 个样本`);
@@ -185,6 +218,9 @@ export class DatasetLoader {
     const audioFiles: string[] = (await this.findAudioFiles()).sort((left: string, right: string) => left.localeCompare(right));
     console.info(`[DatasetLoader] 找到 ${audioFiles.length} 个音频文件`);
     let skippedWithoutTranscript: number = 0;
+    this.lastLoadSummary.audioFileCount = audioFiles.length;
+    this.lastLoadSummary.hasFlacSamples = audioFiles.some((audioPath: string) => audioPath.endsWith('.flac'));
+    this.lastLoadSummary.hasWavSamples = audioFiles.some((audioPath: string) => audioPath.endsWith('.wav'));
 
     if (audioFiles.length > 0) {
       console.info(`[DatasetLoader] 第一个音频文件：${audioFiles[0]}`);
@@ -205,6 +241,7 @@ export class DatasetLoader {
     if (skippedWithoutTranscript > 0) {
       console.warn(`[DatasetLoader] 共跳过 ${skippedWithoutTranscript} 个缺少转录文本的样本`);
     }
+    this.lastLoadSummary.skippedWithoutTranscriptCount = skippedWithoutTranscript;
   }
 
   private async findAudioFiles(): Promise<string[]> {
@@ -335,6 +372,10 @@ export class DatasetLoader {
 
   getSampleCount(): number {
     return this.samples.length;
+  }
+
+  getLastLoadSummary(): DatasetLoadSummary {
+    return { ...this.lastLoadSummary };
   }
 
   getTranscript(sampleIdOrUtteranceId: string): string {

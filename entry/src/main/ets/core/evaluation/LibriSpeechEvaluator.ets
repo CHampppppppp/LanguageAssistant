@@ -1,5 +1,6 @@
 import { AsrService } from '../asr/AsrService';
 import { DatasetLoader, DatasetSample } from '../../utils/DatasetLoader';
+import { PerformanceMonitor } from '../../utils/PerformanceMonitor';
 import { AccuracyMetric, WordAccuracyResult } from './AccuracyMetric';
 import { EvaluationDetail, EvaluationSummary } from './EvaluationTypes';
 
@@ -16,10 +17,9 @@ export class LibriSpeechEvaluator {
 
   async evaluate(): Promise<EvaluationSummary> {
     const samples: DatasetSample[] = await this.datasetLoader.loadDataset();
-    const testCount: number = Math.min(samples.length, this.maxSamples);
+    const testCount: number = Math.min(samples.length, Math.max(0, this.maxSamples));
     const details: EvaluationDetail[] = [];
-    let totalWordAccuracy: number = 0;
-    let totalResponseTime: number = 0;
+    const performanceMonitor: PerformanceMonitor = new PerformanceMonitor();
 
     for (let i: number = 0; i < testCount; i++) {
       const sample: DatasetSample = samples[i];
@@ -53,8 +53,7 @@ export class LibriSpeechEvaluator {
       }
 
       const responseTime: number = Date.now() - startedAt;
-      totalWordAccuracy += metric.wordAccuracy;
-      totalResponseTime += responseTime;
+      performanceMonitor.recordEvaluationResult(metric.wordAccuracy, responseTime, success);
 
       details.push({
         sampleId: sample.sampleId,
@@ -68,11 +67,18 @@ export class LibriSpeechEvaluator {
       });
     }
 
+    const metrics = performanceMonitor.getMetrics();
+
     return {
-      averageWordAccuracy: testCount > 0 ? totalWordAccuracy / testCount : 0,
-      averageResponseTime: testCount > 0 ? totalResponseTime / testCount : 0,
+      averageWordAccuracy: metrics.recognitionAccuracy / 100,
+      averageResponseTime: metrics.avgResponseTime,
       evaluatedCount: testCount,
       totalSampleCount: samples.length,
+      successCount: metrics.successCount,
+      failureCount: metrics.failureCount,
+      successRate: metrics.successRate / 100,
+      accuracyTargetMet: performanceMonitor.isAccuracyTargetMet(),
+      responseTimeTargetMet: performanceMonitor.isResponseTimeTargetMet(),
       details
     };
   }
