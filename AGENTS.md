@@ -112,16 +112,16 @@
 - Run unit tests。
 - 真机/模拟器运行 `entry`。
 
-本机命令行执行 hvigor/UnitTestBuild 时，优先临时指定 DevEco Studio 自带 SDK 根目录，不修改系统环境变量：
+本机命令行执行 hvigor/UnitTestBuild 时，可按个人机器的 DevEco Studio SDK 安装位置临时指定 `DEVECO_SDK_HOME`，不要修改系统环境变量，也不要把个人绝对路径写成项目通用配置：
 
 ```bash
-DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk \
-/Applications/DevEco-Studio.app/Contents/tools/node/bin/node \
-/Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js \
+DEVECO_SDK_HOME=<local-deveco-sdk-root> \
+<local-deveco-node> \
+<local-hvigorw.js> \
 --sync -p product=default --analyze=normal --parallel --incremental --daemon
 ```
 
-注意：`DEVECO_SDK_HOME` 应指向 `/Applications/DevEco-Studio.app/Contents/sdk`，不是 `.../sdk/default`。Champ 的本机性能较慢，构建、测试和 HAP 打包允许使用更长超时；超过 2-5 分钟仍无输出时再判断是否卡住并停止 daemon。如果该 SDK 路径仍报 `SDK component missing` 或 `DEVECO_SDK_HOME` 无效，不继续修改系统 SDK 配置；记录验证受阻原因，并由 Champ 在 DevEco Studio 内手动运行对应测试。
+注意：`DEVECO_SDK_HOME` 应指向 SDK 根目录，而不是某个具体版本或 `default` 子目录。不同成员的 SDK 路径可能不同，路径只作为本机验证参数使用。构建、测试和 HAP 打包允许使用较长超时；超过 2-5 分钟仍无输出时再判断是否卡住并停止 daemon。如果临时 SDK 路径仍报 `SDK component missing` 或 `DEVECO_SDK_HOME` 无效，不继续修改系统 SDK 配置；记录验证受阻原因，并由对应开发者在 DevEco Studio 内手动运行对应测试。
 
 如果本地安装了 CLI 工具，可使用项目确认过的等价命令。新增 CLI 验证命令前，先把命令写回本文件。
 
