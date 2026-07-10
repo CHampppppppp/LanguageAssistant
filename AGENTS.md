@@ -185,6 +185,8 @@
 - Run unit tests。
 - 真机/模拟器运行 `entry`。
 
+本机命令行执行 hvigor/UnitTestBuild 时，如果报 `SDK component missing` 或 `DEVECO_SDK_HOME` 无效，不继续修改系统 SDK 配置；记录验证受阻原因，并由 Champ 在 DevEco Studio 内手动运行对应测试。
+
 如果本地安装了 CLI 工具，可使用项目确认过的等价命令。新增 CLI 验证命令前，先把命令写回本文件。
 
 手动验收最少覆盖：

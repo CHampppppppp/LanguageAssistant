@@ -17,7 +17,7 @@ export class MockCommandExecutor {
       case 'time_query':
         return this.queryTime(command.intent);
       case 'play_music':
-        return this.simulate(command.intent, `模拟播放${command.entities.get('music_name') || '随机音乐'}`);
+        return this.playMusic(command);
       case 'stop_music':
         return this.simulate(command.intent, '模拟停止音乐播放');
       case 'next_music':
@@ -27,13 +27,13 @@ export class MockCommandExecutor {
       case 'volume_down':
         return this.adjustVolume(command.intent, VolumeDirection.DOWN);
       case 'open_app':
-        return this.simulate(command.intent, command.entities.get('app_name') ? `模拟打开${command.entities.get('app_name')}` : '请指定要打开的应用名称');
+        return this.openApp(command);
       case 'close_app':
-        return this.simulate(command.intent, command.entities.get('app_name') ? `模拟关闭${command.entities.get('app_name')}` : '请指定要关闭的应用名称');
+        return this.closeApp(command);
       case 'set_alarm':
-        return this.simulate(command.intent, `模拟设置闹钟为${command.entities.get('hour') || '0'}点${command.entities.get('minute') || '0'}分`);
+        return this.setAlarm(command);
       case 'weather_query':
-        return this.simulate(command.intent, '模拟天气：晴，25 度');
+        return this.queryWeather(command.intent);
       default:
         return {
           status: CommandExecutionStatus.UNSUPPORTED,
@@ -57,12 +57,56 @@ export class MockCommandExecutor {
     return this.volumeControlService.adjust(direction, intent);
   }
 
+  private playMusic(command: VoiceCommand): CommandExecutionResult {
+    const musicName: string = command.getEntity('music_name') || '随机音乐';
+    return this.simulate(command.intent, `模拟播放${musicName}`);
+  }
+
+  private openApp(command: VoiceCommand): CommandExecutionResult {
+    const appName: string = command.getEntity('app_name');
+    if (!appName) {
+      return this.fail(command.intent, '请指定要打开的应用名称');
+    }
+    return this.simulate(command.intent, `模拟打开${appName}`);
+  }
+
+  private closeApp(command: VoiceCommand): CommandExecutionResult {
+    const appName: string = command.getEntity('app_name');
+    if (!appName) {
+      return this.fail(command.intent, '请指定要关闭的应用名称');
+    }
+    return this.simulate(command.intent, `模拟关闭${appName}`);
+  }
+
+  private setAlarm(command: VoiceCommand): CommandExecutionResult {
+    const hour: string = command.getEntity('hour');
+    if (!hour) {
+      return this.fail(command.intent, '请指定闹钟时间');
+    }
+
+    const minute: string = command.getEntity('minute') || '0';
+    return this.simulate(command.intent, `模拟设置闹钟为${hour}点${minute}分`);
+  }
+
+  private queryWeather(intent: string): CommandExecutionResult {
+    return this.simulate(intent, '模拟天气：晴，25 度');
+  }
+
   private simulate(intent: string, message: string): CommandExecutionResult {
     return {
       status: CommandExecutionStatus.SIMULATED,
       message,
       intent,
       isSimulated: true
+    };
+  }
+
+  private fail(intent: string, message: string): CommandExecutionResult {
+    return {
+      status: CommandExecutionStatus.FAILED,
+      message,
+      intent,
+      isSimulated: false
     };
   }
 }

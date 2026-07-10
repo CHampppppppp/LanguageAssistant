@@ -97,5 +97,80 @@ export default function commandExecutorTest() {
       expect(result.isSimulated).assertFalse();
       expect(result.message).assertContain('音量控制失败');
     });
+
+    it('marks weather query as simulated with clear source boundary', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand('weather_query', '今天天气怎么样');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.SIMULATED);
+      expect(result.intent).assertEqual('weather_query');
+      expect(result.isSimulated).assertTrue();
+      expect(result.message).assertContain('模拟天气');
+    });
+
+    it('marks music commands as simulated', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand('play_music', '播放周杰伦的歌');
+      command.setEntity('music_name', '周杰伦的歌');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.SIMULATED);
+      expect(result.intent).assertEqual('play_music');
+      expect(result.isSimulated).assertTrue();
+      expect(result.message).assertEqual('模拟播放周杰伦的歌');
+    });
+
+    it('marks alarm command as simulated and uses extracted time', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand('set_alarm', '设置8点30分闹钟');
+      command.setEntity('hour', '8');
+      command.setEntity('minute', '30');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.SIMULATED);
+      expect(result.intent).assertEqual('set_alarm');
+      expect(result.isSimulated).assertTrue();
+      expect(result.message).assertEqual('模拟设置闹钟为8点30分');
+    });
+
+    it('marks open app command as simulated when app name exists', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand('open_app', '打开微信');
+      command.setEntity('app_name', '微信');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.SIMULATED);
+      expect(result.intent).assertEqual('open_app');
+      expect(result.isSimulated).assertTrue();
+      expect(result.message).assertEqual('模拟打开微信');
+    });
+
+    it('fails open app command when app name is missing', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand('open_app', '打开应用');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.FAILED);
+      expect(result.intent).assertEqual('open_app');
+      expect(result.isSimulated).assertFalse();
+      expect(result.message).assertEqual('请指定要打开的应用名称');
+    });
+
+    it('returns unsupported for unknown command intent', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand('unknown', '随便说一句没意义的话');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.UNSUPPORTED);
+      expect(result.intent).assertEqual('unknown');
+      expect(result.isSimulated).assertFalse();
+    });
   });
 }
