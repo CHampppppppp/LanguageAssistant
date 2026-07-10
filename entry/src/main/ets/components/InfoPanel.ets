@@ -3,10 +3,10 @@ export struct InfoPanel {
   @Prop title: string = '';
   @Prop value: string = '';
   @Prop placeholder: string = '';
-  @Prop backgroundColor: string = '#FFFFFF';
-  @Prop borderColor: string = '#E8E8E8';
+  @Prop panelBackgroundColor: string = '#FFFFFF';
+  @Prop panelBorderColor: string = '#E8E8E8';
   @Prop textColor: string = '#333333';
-  @Prop height: number = 60;
+  @Prop panelHeight: number = 60;
   @Prop editable: boolean = false;
 
   build() {
@@ -23,11 +23,11 @@ export struct InfoPanel {
       if (this.editable) {
         TextArea({ text: this.value, placeholder: this.placeholder })
           .width('100%')
-          .height(this.height)
+          .height(this.panelHeight)
           .padding(12)
-          .backgroundColor(this.backgroundColor)
+          .backgroundColor(this.panelBackgroundColor)
           .borderRadius(10)
-          .border({ width: 1, color: this.borderColor })
+          .border({ width: 1, color: this.panelBorderColor })
           .fontSize(15)
           .fontColor(this.textColor)
           .textAlign(TextAlign.Start)
@@ -36,11 +36,11 @@ export struct InfoPanel {
           .fontSize(14)
           .fontColor(this.textColor)
           .width('100%')
-          .height(this.height)
+          .height(this.panelHeight)
           .padding(14)
-          .backgroundColor(this.backgroundColor)
+          .backgroundColor(this.panelBackgroundColor)
           .borderRadius(10)
-          .border({ width: 1, color: this.borderColor })
+          .border({ width: 1, color: this.panelBorderColor })
           .textAlign(TextAlign.Start)
           .lineHeight(22)
       }

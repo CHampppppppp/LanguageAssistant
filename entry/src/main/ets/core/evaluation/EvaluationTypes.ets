@@ -14,5 +14,10 @@ export interface EvaluationSummary {
   averageResponseTime: number;
   evaluatedCount: number;
   totalSampleCount: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  accuracyTargetMet: boolean;
+  responseTimeTargetMet: boolean;
   details: EvaluationDetail[];
 }
