@@ -6,12 +6,14 @@ import audioUtilsTest from './AudioUtils.test';
 import speechRecognizerTest from './SpeechRecognizer.test';
 import libriSpeechEvaluatorTest from './LibriSpeechEvaluator.test';
 import semanticUnderstandingTest from './SemanticUnderstanding.test';
+import transformerModelTest from './TransformerModel.test';
 
 export default function testsuite() {
   localUnitTest();
   architectureBoundaryTest();
   commandExecutorTest();
   semanticUnderstandingTest();
+  transformerModelTest();
   performanceMonitorTest();
   audioUtilsTest();
   speechRecognizerTest();

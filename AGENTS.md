@@ -27,116 +27,32 @@
 - 大改动先给方案，确认后再动手。
 - 不删除文件、目录、构建产物、数据集、git 历史，除非 Champ 明确确认。
 - 不修改 `.env`、密钥、token、CI/CD、系统配置，除非 Champ 明确确认。
-- 不提交、不推送、不发布，除非 Champ 明确要求。
+- 完成一个小单元的完整改动并完成可执行验证后，自动创建 git commit；验证受本机环境阻塞时需在提交说明中注明。涉及红线操作、验证失败、用户明确要求不提交时，不自动 commit。
+- 不推送、不发布，除非 Champ 明确要求。
 
 ## 目录结构约定
 
-根目录：
-
-- `AGENTS.md`：项目协作与工程规则，改实践前先改这里。
-- `docs/`：项目说明文档目录，放给组员看的项目介绍、分工、协作说明等。
-- `docs/项目介绍.md`：面向项目成员的目录说明，解释根目录文件夹和常见配置文件用途。
-- `docs/分工文档.md`：项目分工说明，记录三位同学的职责、工作量比例和交付物。
-- `oh-package.json5`、`oh-package-lock.json5`：项目级 OpenHarmony/HarmonyOS 包配置。
-- `build-profile.json5`、`hvigorfile.ts`、`hvigor/`：构建配置。
-- `.env`：本地敏感配置，只允许本机使用，不允许写入代码或日志。
-- `.env.example`：环境变量示例，只放占位符和说明，不放真实密钥，应随项目提交。
-- `entry/`：主应用模块。
-
-`entry/src/main/ets/`：
-
-- `pages/`：ArkUI 页面，只负责界面展示、交互状态、事件转发，不写 API 签名、音频解码、业务规则。
-- `components/`：可复用 ArkUI 组件。页面超过 400 行时优先把展示型 Builder 或区域拆到这里。
-- `viewmodel/`：页面编排层，负责串联语音采集、识别、语义理解、执行、反馈、性能统计。
-- `core/`：核心业务能力。
-  - `audio/`：录音状态机、麦克风采集、音频缓冲，不写 ASR API 签名。
-  - `asr/`：语音转文字服务边界。讯飞请求构造、签名、响应解析放这里，页面和 ViewModel 不直接拼 API。
-  - `nlu/`：意图识别、实体抽取、置信度计算。
-  - `command/`：指令执行和执行结果类型。模拟能力必须在命名或结果中标明。
-  - `feedback/`：文字反馈、TTS 或系统播报能力。未接入 TTS 时必须命名为文字反馈或模拟语音反馈。
-  - `evaluation/`：LibriSpeech 评测链路、准确率/WER/响应时间统计，不与实时中文交互链路混用。
-- `model/`：领域模型和 Transformer 实验模型结构。未真正接入主流程的模型不得在 UI 中宣传为已生效。
-- `utils/`：数据集加载、音频处理、性能统计等通用工具。
-- `config/`：只放非敏感配置。不得硬编码真实 `appId`、`apiKey`、`apiSecret`、token、密码。
-
-兼容规则：
-
-- 根 `core/*.ets` 旧文件允许短期作为兼容入口，但新增业务代码优先放入 `core/audio`、`core/asr`、`core/nlu`、`core/command`、`core/feedback`、`core/evaluation`。
-- 已确认无引用的旧入口要先在文档中列出清理计划，再由 Champ 确认后删除。
-
-`entry/src/main/resources/`：
-
-- `base/`、`dark/`：UI 资源。
-- `rawfile/`：数据集和演示资源。LibriSpeech 体积很大，新增、移动、裁剪、删除前必须说明原因并确认。
-
-`entry/src/test/` 和 `entry/src/ohosTest/`：
-
-- 单元测试和设备测试。模板测试不能算有效覆盖。
-- 新增核心逻辑时必须补测试，至少覆盖正常路径、失败路径和边界输入。
+- `AGENTS.md`：项目规则。改实践前先改这里。
+- `docs/`：项目介绍、分工、协作说明。
+- `entry/src/main/ets/pages/`：ArkUI 页面，只做展示、交互状态和事件转发。
+- `entry/src/main/ets/components/`：可复用 ArkUI 组件；页面超过 400 行优先拆组件。
+- `entry/src/main/ets/viewmodel/`：页面编排层，串联采集、识别、理解、执行、反馈、统计。
+- `entry/src/main/ets/core/`：核心业务能力，新增代码优先放入 `audio/`、`asr/`、`nlu/`、`command/`、`feedback/`、`evaluation/` 子目录。
+- `entry/src/main/ets/model/`：领域模型和 Transformer 实验模型。
+- `entry/src/main/ets/utils/`：数据集、音频、性能等通用工具。
+- `entry/src/main/ets/config/`：只放非敏感配置和读取逻辑。
+- `entry/src/main/resources/rawfile/`：演示资源和小规模数据集。新增、移动、裁剪 LibriSpeech 前必须说明原因并确认。
+- `entry/src/test/`、`entry/src/ohosTest/`：单元测试和设备测试。模板测试不能算有效覆盖。
 
 ## 模块边界
 
-### 语音采集模块
-
-- 负责麦克风权限检查、录音状态机、采样率、声道、音频缓冲区管理。
-- 必须明确状态：`idle`、`recording`、`stopping`、`recognizing`、`completed`、`failed`。
-- 不允许用多个布尔值随意拼状态，避免自动停止和手动停止互相打架。
-- 不允许录音设备异常时吞错，必须给 UI 可理解的错误信息。
-
-### 语音转文字模块
-
-- 科大讯飞 API 调用要封装成独立服务，页面层和 ViewModel 不直接拼签名。
-- 讯飞签名失败必须失败返回，不允许用不等价的 SHA256 备用签名假装可用。
-- API 请求、响应、错误码要有类型定义和解析函数。
-- 不得在日志中输出密钥、完整 Authorization、原始音频大块数据。
-- LibriSpeech 评测链路必须使用与英文数据匹配的识别配置或明确的离线 Transformer 识别流程。
-
-### Transformer 模型模块
-
-- 如果 UI 或文档宣称“基于 Transformer”，必须满足至少一项：
-  - Transformer 参与语音识别、特征提取、意图分类或重排序主流程。
-  - 或项目文档明确说明 Transformer 是实验模块，并给出可运行入口和评测方式。
-- 只有类名和模拟 `forward()` 不算完成 Transformer 要求。
-- 模型输入输出、特征维度、加载路径、推理耗时必须可追踪。
-
-### 语义理解模块
-
-- 意图名使用稳定枚举或常量，不在多处散落字符串。
-- 每个意图要有：触发表达、实体抽取、置信度策略、测试用例。
-- 正则和关键词规则要集中维护，新增意图必须补样例。
-- 未识别意图要给出友好反馈，不得误判成高置信度。
-
-### 指令执行模块
-
-- 当前允许保留模拟执行，但必须在 UI 或代码命名中明确 `mock`/`simulated`，不得伪装成真实系统调用。
-- 真实能力优先级：
-  1. 时间查询：本地真实时间。
-  2. 音量控制：调用系统能力或明确受限。
-  3. 天气查询：真实 API 或明确模拟数据来源。
-  4. 音乐控制：系统媒体能力或受限说明。
-  5. 闹钟/打开应用：系统能力可行性确认后实现。
-- 每个命令执行结果都要包含成功/失败状态，而不是只有展示文案。
-
-### 语音反馈模块
-
-- 语音反馈应逐步接入 TTS 或系统播报能力。
-- 如果暂时只做文字反馈，UI 和文档必须称为“文字反馈”或“模拟语音反馈”。
-- 播报失败不能影响主流程完成，但要记录可诊断错误。
-
-### 数据集与评测模块
-
-- LibriSpeech 文件结构保持原始层级：`speaker/chapter/audio + transcript`。
-- `.trans.txt` 是基准文本，准确率计算必须基于识别结果与基准文本。
-- FLAC 必须使用真实解码方案；只截取 FLAC 数据块不能当作 PCM。
-- 评测结果至少记录：
-  - sample id
-  - ground truth
-  - recognized text
-  - similarity / WER / CER
-  - response time
-  - success/failure reason
-- 93% 准确率指标要定义清楚：使用 word accuracy、WER 转换，或项目文档明确的相似度算法。不得用不透明的字符串包含率替代正式指标。
-- 2 秒响应时间要明确起止点，推荐从录音结束到识别结果和反馈生成完成。
+- 语音采集：使用明确状态机 `idle`、`recording`、`stopping`、`recognizing`、`completed`、`failed`；设备异常必须返回 UI 可理解错误。
+- ASR：科大讯飞 API 调用必须封装在 `core/asr`，页面和 ViewModel 不拼签名；签名失败必须失败返回；日志不得输出密钥、完整 Authorization 或大块音频。
+- NLU：意图名使用稳定枚举或常量；规则、实体抽取、置信度策略集中维护；新增意图必须补样例和测试。
+- Command：模拟能力必须用 `mock`/`simulated` 或结果状态标明；每个执行结果都包含成功/失败状态。
+- Feedback：未接入 TTS 时必须称为文字反馈或模拟语音反馈。
+- Transformer：UI 或文档宣称“基于 Transformer”时，必须真实参与主流程，或明确标为实验模块并提供可运行入口和评测方式。
+- Evaluation：LibriSpeech 保持 `speaker/chapter/audio + transcript`；准确率基于 `.trans.txt`；FLAC 必须真实解码；评测结果至少记录样本、基准文本、识别文本、WER/相似度、响应时间和失败原因。
 
 ## 敏感配置规则
 
@@ -155,6 +71,17 @@
 - 不为了“跑起来”吞异常、注释报错代码或加绕过逻辑。
 - 日志要能定位问题，但不能输出敏感信息和大量音频内容。
 - 新增能力先补接口边界，再接 UI。
+
+## ArkTS 编译约束
+
+项目使用 ArkTS 严格编译，新增或修改 `.ets` 文件时必须避开以下 TypeScript 写法，否则 `UnitTestArkTS` 会失败：
+
+- 不使用正则字面量 `/.../`，统一写成 `new RegExp('...', flags)`，反斜杠要按字符串规则转义。
+- 不使用 `any`、`unknown` 类型。错误对象按具体类型处理，例如 `BusinessError`，或定义明确的接口类型。
+- 返回类型不包含 `undefined` 的函数必须所有分支显式 `return` 或 `throw`。`catch` 中调用会抛错的 helper 后，也要用 `return await helper(...)` 等方式让编译器确认路径结束。
+- 不使用对象展开 `{ ...obj }`；需要拷贝对象时手写字段映射，避免 ArkTS `arkts-no-spread`。
+- 不使用数组/迭代器解构声明，例如 `const [key, value] = entry`；改成 `const key = entry[0]`、`const value = entry[1]`。
+- 不使用数组展开 `[...values]`；复制数组用 `values.slice(0)`。
 
 ## 测试要求
 
@@ -185,7 +112,16 @@
 - Run unit tests。
 - 真机/模拟器运行 `entry`。
 
-本机命令行执行 hvigor/UnitTestBuild 时，如果报 `SDK component missing` 或 `DEVECO_SDK_HOME` 无效，不继续修改系统 SDK 配置；记录验证受阻原因，并由 Champ 在 DevEco Studio 内手动运行对应测试。
+本机命令行执行 hvigor/UnitTestBuild 时，优先临时指定 DevEco Studio 自带 SDK 根目录，不修改系统环境变量：
+
+```bash
+DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk \
+/Applications/DevEco-Studio.app/Contents/tools/node/bin/node \
+/Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js \
+--sync -p product=default --analyze=normal --parallel --incremental --daemon
+```
+
+注意：`DEVECO_SDK_HOME` 应指向 `/Applications/DevEco-Studio.app/Contents/sdk`，不是 `.../sdk/default`。Champ 的本机性能较慢，构建、测试和 HAP 打包允许使用更长超时；超过 2-5 分钟仍无输出时再判断是否卡住并停止 daemon。如果该 SDK 路径仍报 `SDK component missing` 或 `DEVECO_SDK_HOME` 无效，不继续修改系统 SDK 配置；记录验证受阻原因，并由 Champ 在 DevEco Studio 内手动运行对应测试。
 
 如果本地安装了 CLI 工具，可使用项目确认过的等价命令。新增 CLI 验证命令前，先把命令写回本文件。
 
@@ -195,8 +131,6 @@
 - 开始录音 -> 停止录音 -> 返回识别文本。
 - 未授权麦克风时的错误提示。
 - 网络/API 失败时的错误提示。
-- 至少 5 条语义指令识别。
-- LibriSpeech 评测入口可运行并生成指标。
 - 响应时间展示与统计合理。
 
 ## 性能与验收指标
@@ -216,26 +150,6 @@
 - 如果只需要演示，优先保留小规模评测子集，并记录抽样规则。
 - 不得直接删除现有数据集；需要清理时先列出路径、体积、影响，确认后再做。
 
-## 当前技术债优先级
-
-P0：
-
-- 轮换曾经进入源码的讯飞密钥，并完成安全配置读取。
-- 修录音开始/停止状态机。
-- 明确 LibriSpeech 英文评测与中文交互链路的关系。
-
-P1：
-
-- 拆分 ASR API 服务，修正签名失败处理。
-- 接入真实 FLAC 解码或替换为可评测 PCM/WAV 数据流。
-- 为语义理解、命令执行、数据集解析补测试。
-
-P2：
-
-- 将模拟指令执行升级为真实系统能力或明确 mock 边界。
-- 接入 TTS 或改名为文字反馈。
-- 清理 Transformer 模块：真实接入或降级为实验模块。
-
 ## 交付前检查
 
 交付前必须确认：
@@ -243,7 +157,6 @@ P2：
 - 没有真实密钥进入源码。
 - 项目能构建。
 - 核心测试通过。
-- 评测报告能解释 93% 准确率如何计算。
-- 响应时间统计口径明确。
-- UI 文案不夸大未实现能力。
-- 大体积资源和生成目录不会误提交或误打包。
+- 准确率和响应时间来自真实统计，口径可解释。
+- UI 和文档不夸大未实现能力。
+- 大体积资源、生成目录、密钥不会误提交。

@@ -165,7 +165,7 @@ export class PerformanceMonitor {
       return 0;
     }
 
-    const sortedValues: number[] = [...values].sort((left: number, right: number) => left - right);
+    const sortedValues: number[] = values.slice(0).sort((left: number, right: number) => left - right);
     const index: number = Math.max(0, Math.ceil((percentile / 100) * sortedValues.length) - 1);
     return sortedValues[index];
   }

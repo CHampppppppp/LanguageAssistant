@@ -21,6 +21,8 @@ export interface DatasetLoadSummary {
   loadDurationMs: number;
 }
 
+const WINDOWS_PATH_SEPARATOR_PATTERN: RegExp = new RegExp('\\\\', 'g');
+
 export class DatasetLoader {
   private datasetPath: string = '';
   private samples: DatasetSample[] = [];
@@ -313,7 +315,7 @@ export class DatasetLoader {
   }
 
   private parseAudioPath(audioPath: string): DatasetSample | null {
-    const normalizedPath: string = audioPath.replace(/\\/g, '/');
+    const normalizedPath: string = audioPath.replace(WINDOWS_PATH_SEPARATOR_PATTERN, '/');
     const fileName: string = normalizedPath.split('/').pop() || '';
     const parts: string[] = fileName.replace('.flac', '').replace('.wav', '').split('-');
 
@@ -375,7 +377,15 @@ export class DatasetLoader {
   }
 
   getLastLoadSummary(): DatasetLoadSummary {
-    return { ...this.lastLoadSummary };
+    return {
+      transcriptCount: this.lastLoadSummary.transcriptCount,
+      audioFileCount: this.lastLoadSummary.audioFileCount,
+      matchedSampleCount: this.lastLoadSummary.matchedSampleCount,
+      skippedWithoutTranscriptCount: this.lastLoadSummary.skippedWithoutTranscriptCount,
+      hasFlacSamples: this.lastLoadSummary.hasFlacSamples,
+      hasWavSamples: this.lastLoadSummary.hasWavSamples,
+      loadDurationMs: this.lastLoadSummary.loadDurationMs
+    };
   }
 
   getTranscript(sampleIdOrUtteranceId: string): string {
@@ -385,7 +395,9 @@ export class DatasetLoader {
     }
 
     if (!sampleIdOrUtteranceId.includes('-')) {
-      for (const [sampleId, text] of this.transcripts.entries()) {
+      for (const entry of this.transcripts.entries()) {
+        const sampleId: string = entry[0];
+        const text: string = entry[1];
         if (sampleId.endsWith(`-${sampleIdOrUtteranceId}`)) {
           return text;
         }

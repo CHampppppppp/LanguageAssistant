@@ -56,5 +56,29 @@ export default function semanticUnderstandingTest() {
       expect(command.intent).assertEqual(VoiceIntent.UNKNOWN);
       expect(command.confidence).assertLess(0.5);
     });
+
+    it('keeps high confidence rule result before transformer assist', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('现在几点了');
+
+      expect(command.intent).assertEqual(VoiceIntent.TIME_QUERY);
+      expect(command.confidence).assertLarger(0.9);
+      expect(command.getEntity('semantic_source')).assertEqual('rule');
+    });
+
+    it('uses transformer assist when rule confidence is low', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('麻烦看下时间');
+
+      expect(command.intent).assertEqual(VoiceIntent.TIME_QUERY);
+      expect(command.confidence).assertLarger(0.6);
+      expect(command.getEntity('semantic_source')).assertEqual('transformer_aux');
+    });
+
+    it('keeps unknown when transformer confidence is low', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('随便念一段没有指令含义的话');
+
+      expect(command.intent).assertEqual(VoiceIntent.UNKNOWN);
+      expect(command.confidence).assertLess(0.5);
+      expect(command.getEntity('semantic_source')).assertEqual('unknown');
+    });
   });
 }

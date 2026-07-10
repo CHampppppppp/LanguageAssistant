@@ -46,7 +46,7 @@ export class AudioRecorder {
       this.state = RecordingState.RECORDING;
       this.emitAudioLevel(new ArrayBuffer(0));
     } catch (error) {
-      await this.handleFailure(error, '录制失败');
+      await this.handleFailure(error as BusinessError, '录制失败');
     }
   }
 
@@ -82,7 +82,7 @@ export class AudioRecorder {
       this.emitAudioLevel(new ArrayBuffer(0));
       return this.mergeArrayBuffers(chunks, totalBytes);
     } catch (error) {
-      await this.handleFailure(error, '停止录制失败');
+      return await this.handleFailure(error as BusinessError, '停止录制失败');
     }
   }
 
@@ -129,12 +129,11 @@ export class AudioRecorder {
     this.onAudioLevelChanged(normalizedLevel);
   }
 
-  private async handleFailure(error: unknown, prefix: string): Promise<never> {
+  private async handleFailure(error: BusinessError, prefix: string): Promise<never> {
     this.state = RecordingState.FAILED;
     await this.safeReleaseCapturer();
-    const err: BusinessError = error as BusinessError;
-    const detail: string = err && typeof err.code === 'number'
-      ? `${err.code}, ${err.message}`
+    const detail: string = typeof error.code === 'number'
+      ? `${error.code}, ${error.message}`
       : String(error);
     throw new Error(`${prefix}: ${detail}`);
   }

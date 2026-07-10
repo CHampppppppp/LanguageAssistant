@@ -1,4 +1,5 @@
 import { VoiceCommand } from '../../model/VoiceCommand';
+import { TransformerModel, TransformerPrediction } from '../../model/TransformerModel';
 import { IntentRule, INTENT_RULES } from './IntentRule';
 import { VoiceIntent } from './VoiceIntent';
 
@@ -8,25 +9,41 @@ const ALARM_TIME_PATTERN: RegExp = new RegExp('(\\d{1,2})[点:时](?:(\\d{1,2})�
 const MUSIC_NAME_PATTERN: RegExp = new RegExp('播放(?:音乐|歌曲)?(.+)$');
 const COMMAND_OBJECT_PREFIX_PATTERN: RegExp = new RegExp('^(一下|下|请|帮我)');
 const COMMAND_OBJECT_SUFFIX_PATTERN: RegExp = new RegExp('(应用|软件)$');
+const RULE_HIGH_CONFIDENCE_THRESHOLD: number = 0.75;
+const TRANSFORMER_ASSIST_THRESHOLD: number = 0.6;
 
 interface IntentDetection {
   intent: VoiceIntent;
   confidence: number;
+  source: string;
 }
 
 export class RuleBasedSemanticUnderstanding {
+  private transformerModel: TransformerModel = new TransformerModel();
+
+  constructor(transformerModel?: TransformerModel) {
+    if (transformerModel) {
+      this.transformerModel = transformerModel;
+    }
+    if (!this.transformerModel.isModelLoaded()) {
+      this.transformerModel.loadModelSync();
+    }
+  }
+
   understand(text: string): VoiceCommand {
     const command: VoiceCommand = new VoiceCommand();
     const normalizedText: string = this.normalize(text);
-    const detection: IntentDetection = this.detectIntent(normalizedText);
+    const ruleDetection: IntentDetection = this.detectRuleIntent(normalizedText);
+    const detection: IntentDetection = this.mergeWithTransformer(normalizedText, ruleDetection);
 
     command.originalText = text;
     command.timestamp = Date.now();
     command.intent = detection.intent;
     command.entities = this.extractEntities(normalizedText, detection.intent);
+    command.entities.set('semantic_source', detection.source);
     command.confidence = detection.confidence;
 
-    console.info(`语义理解结果 - 意图: ${command.intent}, 置信度: ${command.confidence}`);
+    console.info(`语义理解结果 - 意图: ${command.intent}, 置信度: ${command.confidence}, 来源: ${detection.source}`);
     return command;
   }
 
@@ -34,13 +51,14 @@ export class RuleBasedSemanticUnderstanding {
     return text.toLowerCase().replace(WHITESPACE_PATTERN, '').trim();
   }
 
-  private detectIntent(text: string): IntentDetection {
+  private detectRuleIntent(text: string): IntentDetection {
     for (let i: number = 0; i < INTENT_RULES.length; i++) {
       const rule: IntentRule = INTENT_RULES[i];
       if (this.matchesPattern(text, rule.patterns)) {
         return {
           intent: rule.intent,
-          confidence: rule.patternConfidence
+          confidence: rule.patternConfidence,
+          source: 'rule'
         };
       }
     }
@@ -64,13 +82,46 @@ export class RuleBasedSemanticUnderstanding {
     if (bestIntent === VoiceIntent.UNKNOWN) {
       return {
         intent: VoiceIntent.UNKNOWN,
-        confidence: 0.2
+        confidence: 0.2,
+        source: 'unknown'
       };
     }
 
     return {
       intent: bestIntent,
-      confidence: this.calculateKeywordConfidence(bestKeywordCount)
+      confidence: this.calculateKeywordConfidence(bestKeywordCount),
+      source: 'rule_low'
+    };
+  }
+
+  private mergeWithTransformer(text: string, ruleDetection: IntentDetection): IntentDetection {
+    if (ruleDetection.intent !== VoiceIntent.UNKNOWN && ruleDetection.confidence >= RULE_HIGH_CONFIDENCE_THRESHOLD) {
+      return {
+        intent: ruleDetection.intent,
+        confidence: ruleDetection.confidence,
+        source: 'rule'
+      };
+    }
+
+    const prediction: TransformerPrediction = this.transformerModel.predictIntent(text);
+    if (prediction.intent !== VoiceIntent.UNKNOWN &&
+      prediction.confidence >= TRANSFORMER_ASSIST_THRESHOLD &&
+      prediction.confidence > ruleDetection.confidence) {
+      return {
+        intent: prediction.intent,
+        confidence: prediction.confidence,
+        source: 'transformer_aux'
+      };
+    }
+
+    if (ruleDetection.intent !== VoiceIntent.UNKNOWN) {
+      return ruleDetection;
+    }
+
+    return {
+      intent: VoiceIntent.UNKNOWN,
+      confidence: Math.min(ruleDetection.confidence, prediction.confidence),
+      source: 'unknown'
     };
   }
 
