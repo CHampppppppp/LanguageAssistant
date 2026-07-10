@@ -3,6 +3,7 @@ import { StatusPanel } from '../components/StatusPanel';
 import { InfoPanel } from '../components/InfoPanel';
 import { ControlButtons } from '../components/ControlButtons';
 import { RecordingIndicator } from '../components/RecordingIndicator';
+import { AssistantFlowState, getAssistantFlowLabel, isAssistantFlowBusy } from '../viewmodel/AssistantFlowState';
 
 @Entry
 @Component
@@ -11,7 +12,7 @@ struct Index {
   @State recognitionText: string = '点击麦克风开始语音识别';
   @State commandResult: string = '';
   @State feedbackText: string = '';
-  @State isRecording: boolean = false;
+  @State flowState: AssistantFlowState = AssistantFlowState.IDLE;
   @State evaluationAccuracy: number = 0;
   @State responseTime: number = 0;
   @State datasetInfo: string = 'LibriSpeech 英文评测资源';
@@ -26,6 +27,9 @@ struct Index {
     this.viewModel.setAudioLevelCallback((level: number) => {
       this.currentAudioLevel = level;
       this.updateWaveformFromAudioLevel(level);
+    });
+    this.viewModel.setFlowStateCallback((state: AssistantFlowState) => {
+      this.flowState = state;
     });
   }
 
@@ -47,7 +51,7 @@ struct Index {
   }
 
   async startRecognition(): Promise<void> {
-    this.isRecording = true;
+    this.flowState = AssistantFlowState.RECORDING;
     this.recognitionText = '正在录音...';
     this.commandResult = '';
     this.feedbackText = '';
@@ -57,7 +61,7 @@ struct Index {
     try {
       await this.viewModel.startRecording();
     } catch (error) {
-      this.isRecording = false;
+      this.flowState = AssistantFlowState.FAILED;
       this.recognitionText = '录音启动失败，请检查麦克风权限';
       this.rawTranscriptText = '录音启动失败';
       console.error('录音启动错误:', error);
@@ -65,7 +69,7 @@ struct Index {
   }
 
   async stopRecording(): Promise<void> {
-    this.isRecording = false;
+    this.flowState = AssistantFlowState.RECOGNIZING;
     this.recognitionText = '正在处理录音...';
     this.rawTranscriptText = '正在识别语音...';
 
@@ -73,6 +77,7 @@ struct Index {
       const result = await this.viewModel.stopAndProcessRecording();
       this.applyRecognitionResult(result.recognizedText, result.commandResult, result.feedback, result.responseTime);
     } catch (error) {
+      this.flowState = AssistantFlowState.FAILED;
       this.recognitionText = '识别失败，请重试';
       this.rawTranscriptText = '识别失败';
       console.error('语音识别错误:', error);
@@ -80,6 +85,7 @@ struct Index {
   }
 
   async testWithDataset(): Promise<void> {
+    this.flowState = AssistantFlowState.EVALUATING;
     this.recognitionText = '正在使用 LibriSpeech 英文数据集评测...';
 
     try {
@@ -90,6 +96,7 @@ struct Index {
       this.responseTime = result.avgResponseTime;
       this.evaluationAccuracy = result.wordAccuracy;
     } catch (error) {
+      this.flowState = AssistantFlowState.FAILED;
       this.recognitionText = 'LibriSpeech 评测失败';
       console.error('数据集测试错误:', error);
     }
@@ -110,6 +117,7 @@ struct Index {
 
         StatusPanel({
           datasetInfo: this.datasetInfo,
+          flowStateLabel: getAssistantFlowLabel(this.flowState),
           evaluationAccuracy: this.evaluationAccuracy,
           responseTime: this.responseTime
         })
@@ -159,14 +167,15 @@ struct Index {
         })
 
         ControlButtons({
-          isRecording: this.isRecording,
+          isRecording: this.flowState === AssistantFlowState.RECORDING,
+          isBusy: isAssistantFlowBusy(this.flowState),
           startAction: () => this.startRecognition(),
           stopAction: () => this.stopRecording(),
           evaluateAction: () => this.testWithDataset()
         })
 
         RecordingIndicator({
-          isRecording: this.isRecording,
+          isRecording: this.flowState === AssistantFlowState.RECORDING,
           currentAudioLevel: this.currentAudioLevel,
           audioLevels: this.audioLevels
         })

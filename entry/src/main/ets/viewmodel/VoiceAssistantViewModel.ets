@@ -10,6 +10,7 @@ import { IFlytekAsrService } from '../core/asr/IFlytekAsrService';
 import { createEnglishIFlytekBusiness } from '../core/asr/IFlytekTypes';
 import { LibriSpeechEvaluator } from '../core/evaluation/LibriSpeechEvaluator';
 import { EvaluationDetail, EvaluationSummary } from '../core/evaluation/EvaluationTypes';
+import { AssistantFlowState } from './AssistantFlowState';
 
 export interface RecognitionResult {
   recognizedText: string;
@@ -46,9 +47,14 @@ export class VoiceAssistantViewModel {
   private datasetLoader: DatasetLoader | null = null;
   private performanceMonitor: PerformanceMonitor = new PerformanceMonitor();
   private context: Context | undefined = undefined;
+  private flowStateCallback: ((state: AssistantFlowState) => void) | null = null;
 
   setAudioLevelCallback(callback: (level: number) => void): void {
     this.speechRecognizer.setAudioLevelCallback(callback);
+  }
+
+  setFlowStateCallback(callback: (state: AssistantFlowState) => void): void {
+    this.flowStateCallback = callback;
   }
 
   setContext(context: Context): void {
@@ -64,12 +70,14 @@ export class VoiceAssistantViewModel {
 
   destroy(): void {
     this.textFeedback.release();
+    this.flowStateCallback = null;
     console.info('语音助手 ViewModel 销毁');
   }
 
   async processVoiceCommand(): Promise<RecognitionResult> {
     try {
       await this.speechRecognizer.startRecording();
+      this.updateFlowState(AssistantFlowState.RECORDING);
       await new Promise<void>((resolve) => {
         setTimeout(() => resolve(), 3000);
       });
@@ -82,6 +90,7 @@ export class VoiceAssistantViewModel {
 
   async startRecording(): Promise<void> {
     await this.speechRecognizer.startRecording();
+    this.updateFlowState(AssistantFlowState.RECORDING);
   }
 
   async stopAndProcessRecording(): Promise<RecognitionResult> {
@@ -94,24 +103,32 @@ export class VoiceAssistantViewModel {
   }
 
   async testWithDataset(): Promise<TestResult> {
+    this.updateFlowState(AssistantFlowState.EVALUATING);
     if (!this.datasetLoader) {
+      this.updateFlowState(AssistantFlowState.FAILED);
       return { wordAccuracy: 0, sampleCount: 0, evaluatedCount: 0, avgResponseTime: 0, details: [] };
     }
 
-    const evaluator: LibriSpeechEvaluator = new LibriSpeechEvaluator(
-      this.datasetLoader,
-      new IFlytekAsrService(createEnglishIFlytekBusiness()),
-      10
-    );
-    const summary: EvaluationSummary = await evaluator.evaluate();
+    try {
+      const evaluator: LibriSpeechEvaluator = new LibriSpeechEvaluator(
+        this.datasetLoader,
+        new IFlytekAsrService(createEnglishIFlytekBusiness()),
+        10
+      );
+      const summary: EvaluationSummary = await evaluator.evaluate();
+      this.updateFlowState(AssistantFlowState.COMPLETED);
 
-    return {
-      wordAccuracy: Number((summary.averageWordAccuracy * 100).toFixed(2)),
-      sampleCount: summary.totalSampleCount,
-      evaluatedCount: summary.evaluatedCount,
-      avgResponseTime: Number(summary.averageResponseTime.toFixed(0)),
-      details: this.mapEvaluationDetails(summary.details)
-    };
+      return {
+        wordAccuracy: Number((summary.averageWordAccuracy * 100).toFixed(2)),
+        sampleCount: summary.totalSampleCount,
+        evaluatedCount: summary.evaluatedCount,
+        avgResponseTime: Number(summary.averageResponseTime.toFixed(0)),
+        details: this.mapEvaluationDetails(summary.details)
+      };
+    } catch (error) {
+      this.updateFlowState(AssistantFlowState.FAILED);
+      throw error;
+    }
   }
 
   private async processRecordedAudio(audioBuffer: ArrayBuffer): Promise<RecognitionResult> {
@@ -121,17 +138,20 @@ export class VoiceAssistantViewModel {
       return this.createFailedRecognitionResult('未检测到音频数据', '请检查麦克风权限');
     }
 
+    this.updateFlowState(AssistantFlowState.RECOGNIZING);
     const recognizedText: string = await this.speechRecognizer.recognize(audioBuffer);
     if (!recognizedText) {
       return this.createFailedRecognitionResult('识别失败，未返回文字', '请重试');
     }
 
     const command: VoiceCommand = this.semanticUnderstanding.understand(recognizedText);
+    this.updateFlowState(AssistantFlowState.EXECUTING);
     const executionResult: CommandExecutionResult = await this.commandExecutor.execute(command);
     const feedback: string = this.textFeedback.createFeedback(executionResult.message);
     const responseTime: number = Date.now() - startTime;
 
     this.performanceMonitor.recordResponseTime(responseTime);
+    this.updateFlowState(AssistantFlowState.COMPLETED);
 
     return {
       recognizedText,
@@ -143,6 +163,7 @@ export class VoiceAssistantViewModel {
   }
 
   private createFailedRecognitionResult(recognizedText: string, feedback: string): RecognitionResult {
+    this.updateFlowState(AssistantFlowState.FAILED);
     return {
       recognizedText,
       commandResult: '',
@@ -169,5 +190,11 @@ export class VoiceAssistantViewModel {
 
   private toPercent(value: number): number {
     return Number((value * 100).toFixed(2));
+  }
+
+  private updateFlowState(state: AssistantFlowState): void {
+    if (this.flowStateCallback) {
+      this.flowStateCallback(state);
+    }
   }
 }

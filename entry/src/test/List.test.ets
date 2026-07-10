@@ -7,6 +7,7 @@ import speechRecognizerTest from './SpeechRecognizer.test';
 import libriSpeechEvaluatorTest from './LibriSpeechEvaluator.test';
 import semanticUnderstandingTest from './SemanticUnderstanding.test';
 import transformerModelTest from './TransformerModel.test';
+import assistantFlowStateTest from './AssistantFlowState.test';
 
 export default function testsuite() {
   localUnitTest();
@@ -14,6 +15,7 @@ export default function testsuite() {
   commandExecutorTest();
   semanticUnderstandingTest();
   transformerModelTest();
+  assistantFlowStateTest();
   performanceMonitorTest();
   audioUtilsTest();
   speechRecognizerTest();

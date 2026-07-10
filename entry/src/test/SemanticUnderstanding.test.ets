@@ -50,6 +50,27 @@ export default function semanticUnderstandingTest() {
       expect(command.getEntity('app_name')).assertEqual('微信');
     });
 
+    it('extracts app name from close app command', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('关闭支付宝应用');
+
+      expect(command.intent).assertEqual(VoiceIntent.CLOSE_APP);
+      expect(command.getEntity('app_name')).assertEqual('支付宝');
+    });
+
+    it('keeps ambiguous open app command without app entity', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('打开应用');
+
+      expect(command.intent).assertEqual(VoiceIntent.OPEN_APP);
+      expect(command.getEntity('app_name')).assertEqual('');
+    });
+
+    it('does not extract a music name when only generic music command is provided', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('播放音乐');
+
+      expect(command.intent).assertEqual(VoiceIntent.PLAY_MUSIC);
+      expect(command.getEntity('music_name')).assertEqual('');
+    });
+
     it('keeps unknown input low confidence', 0, () => {
       const command: VoiceCommand = new SemanticUnderstanding().understand('随便说一句没意义的话');
 

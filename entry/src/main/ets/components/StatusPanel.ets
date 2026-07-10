@@ -1,11 +1,20 @@
 @Component
 export struct StatusPanel {
   @Prop datasetInfo: string = '';
+  @Prop flowStateLabel: string = '';
   @Prop evaluationAccuracy: number = 0;
   @Prop responseTime: number = 0;
 
   build() {
     Row() {
+      this.buildStatusItem('S', '流程状态', this.flowStateLabel || '待命', '#2563EB')
+
+      Divider()
+        .vertical(true)
+        .height(40)
+        .color('#E0E0E0')
+        .strokeWidth(1)
+
       this.buildStatusItem('D', '数据集', this.datasetInfo, '#4CAF50')
 
       Divider()
@@ -69,7 +78,7 @@ export struct StatusPanel {
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
-    .width('30%')
+    .width('23%')
     .alignItems(HorizontalAlign.Center)
   }
 }
