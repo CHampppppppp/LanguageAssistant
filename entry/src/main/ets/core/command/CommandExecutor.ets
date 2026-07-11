@@ -1,4 +1,5 @@
 import { VoiceCommand } from '../../model/VoiceCommand';
+import { VoiceIntent } from '../nlu/VoiceIntent';
 import { CommandExecutionResult, CommandExecutionStatus } from './CommandResult';
 import { TimeProvider, TimeQueryService } from './TimeQuery';
 import { VolumeControlService, VolumeController, VolumeDirection } from './VolumeControl';
@@ -34,6 +35,8 @@ export class MockCommandExecutor {
         return this.setAlarm(command);
       case 'weather_query':
         return this.queryWeather(command.intent);
+      case VoiceIntent.ACCURACY_EVALUATION:
+        return this.openEvaluationPanel(command.intent);
       default:
         return {
           status: CommandExecutionStatus.UNSUPPORTED,
@@ -90,6 +93,15 @@ export class MockCommandExecutor {
 
   private queryWeather(intent: string): CommandExecutionResult {
     return this.simulate(intent, '模拟天气：晴，25 度');
+  }
+
+  private openEvaluationPanel(intent: string): CommandExecutionResult {
+    return {
+      status: CommandExecutionStatus.SUCCESS,
+      message: '已打开 LibriSpeech 英文评测模块',
+      intent,
+      isSimulated: false
+    };
   }
 
   private simulate(intent: string, message: string): CommandExecutionResult {

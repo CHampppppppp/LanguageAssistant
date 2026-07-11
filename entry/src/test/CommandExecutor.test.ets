@@ -3,6 +3,7 @@ import { MockCommandExecutor } from '../main/ets/core/command/CommandExecutor';
 import { CommandExecutionStatus } from '../main/ets/core/command/CommandResult';
 import { TimeProvider } from '../main/ets/core/command/TimeQuery';
 import { VolumeController, VolumeState } from '../main/ets/core/command/VolumeControl';
+import { VoiceIntent } from '../main/ets/core/nlu/VoiceIntent';
 import { VoiceCommand } from '../main/ets/model/VoiceCommand';
 
 class FixedTimeProvider implements TimeProvider {
@@ -108,6 +109,18 @@ export default function commandExecutorTest() {
       expect(result.intent).assertEqual('weather_query');
       expect(result.isSimulated).assertTrue();
       expect(result.message).assertContain('模拟天气');
+    });
+
+    it('opens evaluation panel for accuracy evaluation command', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand(VoiceIntent.ACCURACY_EVALUATION, '准确率评测');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.SUCCESS);
+      expect(result.intent).assertEqual(VoiceIntent.ACCURACY_EVALUATION);
+      expect(result.isSimulated).assertFalse();
+      expect(result.message).assertContain('评测模块');
     });
 
     it('marks music commands as simulated', 0, async () => {

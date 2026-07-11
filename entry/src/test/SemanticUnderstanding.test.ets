@@ -35,6 +35,15 @@ export default function semanticUnderstandingTest() {
       expect(downCommand.intent).assertEqual(VoiceIntent.VOLUME_DOWN);
     });
 
+    it('recognizes accuracy evaluation intent before open app fallback', 0, () => {
+      const directCommand: VoiceCommand = new SemanticUnderstanding().understand('准确率评测');
+      const openCommand: VoiceCommand = new SemanticUnderstanding().understand('打开英文评测');
+
+      expect(directCommand.intent).assertEqual(VoiceIntent.ACCURACY_EVALUATION);
+      expect(openCommand.intent).assertEqual(VoiceIntent.ACCURACY_EVALUATION);
+      expect(openCommand.getEntity('app_name')).assertEqual('');
+    });
+
     it('extracts alarm time entities', 0, () => {
       const command: VoiceCommand = new SemanticUnderstanding().understand('设置8点30分闹钟');
 

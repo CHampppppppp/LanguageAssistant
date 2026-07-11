@@ -10,14 +10,23 @@ import { IFlytekAsrService } from '../core/asr/IFlytekAsrService';
 import { createEnglishIFlytekBusiness } from '../core/asr/IFlytekTypes';
 import { LibriSpeechEvaluator } from '../core/evaluation/LibriSpeechEvaluator';
 import { EvaluationDetail, EvaluationSummary } from '../core/evaluation/EvaluationTypes';
+import { VoiceIntent } from '../core/nlu/VoiceIntent';
 import { AssistantFlowState } from './AssistantFlowState';
+
+export enum AssistantUiAction {
+  NONE = 'none',
+  OPEN_EVALUATION_PANEL = 'open_evaluation_panel'
+}
 
 export interface RecognitionResult {
   recognizedText: string;
   commandResult: string;
   feedback: string;
+  commandIntent: string;
   semanticConfidence: number;
   responseTime: number;
+  uiAction: AssistantUiAction;
+  errorDetail: string;
 }
 
 export interface TestResult {
@@ -84,7 +93,8 @@ export class VoiceAssistantViewModel {
       const audioBuffer: ArrayBuffer = await this.speechRecognizer.stopRecording();
       return await this.processRecordedAudio(audioBuffer);
     } catch (error) {
-      return this.createFailedRecognitionResult(`错误: ${(error as Error).message}`, '处理失败');
+      const errMsg: string = this.formatErrorMessage(error as Error);
+      return this.createFailedRecognitionResult(`错误: ${errMsg}`, '处理失败', errMsg);
     }
   }
 
@@ -98,7 +108,8 @@ export class VoiceAssistantViewModel {
       const audioBuffer: ArrayBuffer = await this.speechRecognizer.stopRecording();
       return await this.processRecordedAudio(audioBuffer);
     } catch (error) {
-      return this.createFailedRecognitionResult(`错误: ${(error as Error).message}`, '处理失败');
+      const errMsg: string = this.formatErrorMessage(error as Error);
+      return this.createFailedRecognitionResult(`错误: ${errMsg}`, '处理失败', errMsg);
     }
   }
 
@@ -138,14 +149,17 @@ export class VoiceAssistantViewModel {
     if (audioBuffer.byteLength === 0) {
       return this.createFailedRecognitionResult(
         '未检测到音频输入',
-        '请确认模拟器麦克风输入源、宿主机麦克风权限和录音时长'
+        '请确认模拟器麦克风输入源、宿主机麦克风权限和录音时长',
+        '录音结果为空，未采集到可识别的 PCM 音频数据'
       );
     }
 
     this.updateFlowState(AssistantFlowState.RECOGNIZING);
     const recognizedText: string = await this.speechRecognizer.recognize(audioBuffer);
     if (!recognizedText) {
-      return this.createFailedRecognitionResult('识别失败，未返回文字', '请重试');
+      const recognizerError: string = this.speechRecognizer.getLastErrorMessage();
+      const detail: string = recognizerError || 'ASR 服务返回空识别文本';
+      return this.createFailedRecognitionResult('识别失败，未返回文字', '请重试', detail);
     }
 
     const command: VoiceCommand = this.semanticUnderstanding.understand(recognizedText);
@@ -153,6 +167,9 @@ export class VoiceAssistantViewModel {
     const executionResult: CommandExecutionResult = await this.commandExecutor.execute(command);
     const feedback: string = this.textFeedback.createFeedback(executionResult.message);
     const responseTime: number = Date.now() - startTime;
+    const uiAction: AssistantUiAction = command.intent === VoiceIntent.ACCURACY_EVALUATION ?
+      AssistantUiAction.OPEN_EVALUATION_PANEL :
+      AssistantUiAction.NONE;
 
     this.performanceMonitor.recordResponseTime(responseTime);
     this.updateFlowState(AssistantFlowState.COMPLETED);
@@ -161,20 +178,33 @@ export class VoiceAssistantViewModel {
       recognizedText,
       commandResult: executionResult.message,
       feedback,
+      commandIntent: command.intent,
       semanticConfidence: this.toPercent(command.confidence),
-      responseTime
+      responseTime,
+      uiAction,
+      errorDetail: ''
     };
   }
 
-  private createFailedRecognitionResult(recognizedText: string, feedback: string): RecognitionResult {
+  private createFailedRecognitionResult(recognizedText: string, feedback: string, errorDetail: string = ''): RecognitionResult {
     this.updateFlowState(AssistantFlowState.FAILED);
     return {
       recognizedText,
       commandResult: '',
       feedback,
+      commandIntent: VoiceIntent.UNKNOWN,
       semanticConfidence: 0,
-      responseTime: 0
+      responseTime: 0,
+      uiAction: AssistantUiAction.NONE,
+      errorDetail
     };
+  }
+
+  private formatErrorMessage(error: Error): string {
+    if (error.message) {
+      return error.message;
+    }
+    return String(error);
   }
 
   private mapEvaluationDetails(details: EvaluationDetail[]): TestDetail[] {

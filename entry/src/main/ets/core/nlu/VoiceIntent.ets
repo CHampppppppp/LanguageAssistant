@@ -9,5 +9,6 @@ export enum VoiceIntent {
   SET_ALARM = 'set_alarm',
   OPEN_APP = 'open_app',
   CLOSE_APP = 'close_app',
+  ACCURACY_EVALUATION = 'accuracy_evaluation',
   UNKNOWN = 'unknown'
 }

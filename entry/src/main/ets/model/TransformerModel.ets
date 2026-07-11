@@ -73,6 +73,11 @@ const INTENT_PROTOTYPE_SPECS: IntentPrototypeSpec[] = [
     hints: ['设置', '闹钟', '提醒', '叫我', '点']
   },
   {
+    intent: VoiceIntent.ACCURACY_EVALUATION,
+    utterances: ['准确率评测', '打开英文评测', '开始性能评测', '测试识别准确率', 'LibriSpeech评测'],
+    hints: ['准确率', '评测', '英文', '性能', '测试', 'librispeech']
+  },
+  {
     intent: VoiceIntent.OPEN_APP,
     utterances: ['打开微信', '启动支付宝', '打开应用', '帮我打开软件', '打开浏览器'],
     hints: ['打开', '启动', '应用', '软件']

@@ -13,12 +13,12 @@ export struct ControlButtons {
   @Prop isBusy: boolean = false;
   startAction: () => Promise<void> = async () => {};
   stopAction: () => Promise<void> = async () => {};
-  evaluateAction: () => Promise<void> = async () => {};
+  openEvaluationAction: () => void = () => {};
 
   build() {
     Row() {
       Button(this.isRecording ? '停止录音' : '开始识别')
-        .width('45%')
+        .width('68%')
         .height(50)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
@@ -35,18 +35,19 @@ export struct ControlButtons {
           }
         })
 
-      Button('英文评测')
-        .width('45%')
+      Button('评测')
+        .width('28%')
         .height(50)
-        .fontSize(16)
+        .fontSize(15)
         .fontWeight(FontWeight.Medium)
-        .fontColor(THEME_TEXT_INVERSE)
-        .backgroundColor(THEME_WARNING)
+        .fontColor(THEME_WARNING)
+        .backgroundColor('#FFF7E8')
         .borderRadius(THEME_BUTTON_RADIUS)
+        .border({ width: 1, color: THEME_WARNING })
         .opacity(!this.isBusy ? 1 : 0.52)
         .enabled(!this.isBusy)
         .onClick(() => {
-          this.evaluateAction();
+          this.openEvaluationAction();
         })
     }
     .width(THEME_CARD_WIDTH)

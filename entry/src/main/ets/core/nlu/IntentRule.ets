@@ -57,6 +57,20 @@ export const INTENT_RULES: IntentRule[] = [
     patternConfidence: 0.95
   },
   {
+    intent: VoiceIntent.ACCURACY_EVALUATION,
+    patterns: [
+      new RegExp('准确率评测'),
+      new RegExp('打开.*评测'),
+      new RegExp('英文评测'),
+      new RegExp('性能评测'),
+      new RegExp('性能测试'),
+      new RegExp('测试.*准确率'),
+      new RegExp('librispeech评测')
+    ],
+    keywords: ['准确率', '评测', '英文', '性能', '测试', 'librispeech'],
+    patternConfidence: 0.96
+  },
+  {
     intent: VoiceIntent.OPEN_APP,
     patterns: [new RegExp('打开.+'), new RegExp('启动.+')],
     keywords: ['打开', '启动', '应用', '软件'],

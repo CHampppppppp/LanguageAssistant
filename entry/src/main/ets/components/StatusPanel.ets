@@ -5,6 +5,7 @@ import {
   THEME_CARD_WIDTH,
   THEME_DANGER,
   THEME_SUCCESS,
+  THEME_WARNING,
   THEME_SURFACE,
   THEME_SHADOW_STRONG,
   THEME_TEXT_MUTED,
@@ -13,10 +14,9 @@ import {
 
 @Component
 export struct StatusPanel {
-  @Prop datasetInfo: string = '';
   @Prop flowStateLabel: string = '';
-  @Prop evaluationAccuracy: number = 0;
   @Prop responseTime: number = 0;
+  @Prop semanticConfidence: number = 0;
 
   build() {
     Row() {
@@ -28,36 +28,28 @@ export struct StatusPanel {
         .color(THEME_BORDER)
         .strokeWidth(1)
 
-      this.buildStatusItem('D', '数据集', this.datasetInfo, THEME_SUCCESS)
-
-      Divider()
-        .vertical(true)
-        .height(38)
-        .color(THEME_BORDER)
-        .strokeWidth(1)
-
-      this.buildStatusItem(
-        'A',
-        '评测词准确率',
-        this.evaluationAccuracy > 0 ? `${this.evaluationAccuracy}%` : '未评测',
-        this.evaluationAccuracy >= 93 ? THEME_SUCCESS : THEME_DANGER
-      )
-
-      Divider()
-        .vertical(true)
-        .height(38)
-        .color(THEME_BORDER)
-        .strokeWidth(1)
-
       this.buildStatusItem(
         'T',
-        '响应时间',
+        '本次响应',
         this.responseTime > 0 ? `${this.responseTime}ms` : '未统计',
         this.responseTime > 0 && this.responseTime <= 2000 ? THEME_SUCCESS : THEME_DANGER
       )
+
+      Divider()
+        .vertical(true)
+        .height(38)
+        .color(THEME_BORDER)
+        .strokeWidth(1)
+
+      this.buildStatusItem(
+        'C',
+        '语义置信',
+        this.semanticConfidence > 0 ? `${this.semanticConfidence}%` : '待识别',
+        this.semanticConfidence >= 70 ? THEME_SUCCESS : THEME_WARNING
+      )
     }
     .width(THEME_CARD_WIDTH)
-    .height(82)
+    .height(76)
     .backgroundColor(THEME_SURFACE)
     .borderRadius(THEME_CARD_RADIUS)
     .border({ width: 1, color: THEME_BORDER })
@@ -92,7 +84,7 @@ export struct StatusPanel {
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
-    .width('23%')
+    .width('30%')
     .alignItems(HorizontalAlign.Center)
   }
 }
