@@ -111,6 +111,47 @@ export default function commandExecutorTest() {
       expect(result.message).assertContain('模拟天气');
     });
 
+    it('sets volume from percentage using system range', 0, async () => {
+      const volumeController = new FakeVolumeController(5);
+      const executor = new MockCommandExecutor(new FixedTimeProvider(), volumeController);
+      const command = new VoiceCommand(VoiceIntent.VOLUME_SET, '把音量调到30%');
+      command.setEntity('volume_target', '30');
+      command.setEntity('volume_unit', 'percent');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.SUCCESS);
+      expect(volumeController.lastSetVolume).assertEqual(3);
+      expect(result.message).assertEqual('音量已设置为 3/10');
+    });
+
+    it('sets volume from absolute level', 0, async () => {
+      const volumeController = new FakeVolumeController(5);
+      const executor = new MockCommandExecutor(new FixedTimeProvider(), volumeController);
+      const command = new VoiceCommand(VoiceIntent.VOLUME_SET, '声音设置为8档');
+      command.setEntity('volume_target', '8');
+      command.setEntity('volume_unit', 'level');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.SUCCESS);
+      expect(volumeController.lastSetVolume).assertEqual(8);
+    });
+
+    it('rejects out of range volume percentage', 0, async () => {
+      const volumeController = new FakeVolumeController(5);
+      const executor = new MockCommandExecutor(new FixedTimeProvider(), volumeController);
+      const command = new VoiceCommand(VoiceIntent.VOLUME_SET, '把音量调到120%');
+      command.setEntity('volume_target', '120');
+      command.setEntity('volume_unit', 'percent');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.FAILED);
+      expect(volumeController.lastSetVolume).assertEqual(-1);
+      expect(result.message).assertContain('0 到 100');
+    });
+
     it('opens evaluation panel for accuracy evaluation command', 0, async () => {
       const executor = new MockCommandExecutor(new FixedTimeProvider());
       const command = new VoiceCommand(VoiceIntent.ACCURACY_EVALUATION, '准确率评测');

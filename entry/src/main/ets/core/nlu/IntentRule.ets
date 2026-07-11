@@ -39,6 +39,15 @@ export const INTENT_RULES: IntentRule[] = [
     patternConfidence: 0.95
   },
   {
+    intent: VoiceIntent.VOLUME_SET,
+    patterns: [
+      new RegExp('(?:音量|声音).*(?:调|设|设置|开)到(?:\\d+(?:%|％|格|档)|百分之\\d+)'),
+      new RegExp('(?:把)?(?:音量|声音)(?:调|设|设置|开)为(?:\\d+(?:%|％|格|档)|百分之\\d+)')
+    ],
+    keywords: ['音量', '声音', '调到', '设为', '设置', '百分之', '格', '档'],
+    patternConfidence: 0.97
+  },
+  {
     intent: VoiceIntent.VOLUME_UP,
     patterns: [new RegExp('音量调大'), new RegExp('增大音量'), new RegExp('声音大点'), new RegExp('把声音开大')],
     keywords: ['音量', '声音', '调大', '增大', '大点', '开大'],

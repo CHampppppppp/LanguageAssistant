@@ -2,7 +2,7 @@ import { VoiceCommand } from '../../model/VoiceCommand';
 import { VoiceIntent } from '../nlu/VoiceIntent';
 import { CommandExecutionResult, CommandExecutionStatus } from './CommandResult';
 import { TimeProvider, TimeQueryService } from './TimeQuery';
-import { VolumeControlService, VolumeController, VolumeDirection } from './VolumeControl';
+import { VolumeControlService, VolumeController, VolumeDirection, VolumeTargetUnit } from './VolumeControl';
 
 export class MockCommandExecutor {
   private timeQueryService: TimeQueryService;
@@ -27,6 +27,8 @@ export class MockCommandExecutor {
         return this.adjustVolume(command.intent, VolumeDirection.UP);
       case 'volume_down':
         return this.adjustVolume(command.intent, VolumeDirection.DOWN);
+      case VoiceIntent.VOLUME_SET:
+        return this.setVolume(command);
       case 'open_app':
         return this.openApp(command);
       case 'close_app':
@@ -93,6 +95,17 @@ export class MockCommandExecutor {
 
   private queryWeather(intent: string): CommandExecutionResult {
     return this.simulate(intent, '模拟天气：晴，25 度');
+  }
+
+  private async setVolume(command: VoiceCommand): Promise<CommandExecutionResult> {
+    const targetText: string = command.getEntity('volume_target');
+    const unitText: string = command.getEntity('volume_unit');
+    if (!targetText || (unitText !== VolumeTargetUnit.PERCENT && unitText !== VolumeTargetUnit.LEVEL)) {
+      return this.fail(command.intent, '请指定音量百分比或档位');
+    }
+    const unit: VolumeTargetUnit = unitText === VolumeTargetUnit.PERCENT ?
+      VolumeTargetUnit.PERCENT : VolumeTargetUnit.LEVEL;
+    return this.volumeControlService.setTarget(Number(targetText), unit, command.intent);
   }
 
   private openEvaluationPanel(intent: string): CommandExecutionResult {

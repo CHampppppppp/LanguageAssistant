@@ -35,6 +35,30 @@ export default function semanticUnderstandingTest() {
       expect(downCommand.intent).assertEqual(VoiceIntent.VOLUME_DOWN);
     });
 
+    it('extracts percent target from volume set command', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('把音量调到30%');
+
+      expect(command.intent).assertEqual(VoiceIntent.VOLUME_SET);
+      expect(command.getEntity('volume_target')).assertEqual('30');
+      expect(command.getEntity('volume_unit')).assertEqual('percent');
+    });
+
+    it('extracts level target from volume set command', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('声音设置为5档');
+
+      expect(command.intent).assertEqual(VoiceIntent.VOLUME_SET);
+      expect(command.getEntity('volume_target')).assertEqual('5');
+      expect(command.getEntity('volume_unit')).assertEqual('level');
+    });
+
+    it('extracts Chinese percent prefix from volume set command', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('音量设置为百分之40');
+
+      expect(command.intent).assertEqual(VoiceIntent.VOLUME_SET);
+      expect(command.getEntity('volume_target')).assertEqual('40');
+      expect(command.getEntity('volume_unit')).assertEqual('percent');
+    });
+
     it('recognizes accuracy evaluation intent before open app fallback', 0, () => {
       const directCommand: VoiceCommand = new SemanticUnderstanding().understand('准确率评测');
       const openCommand: VoiceCommand = new SemanticUnderstanding().understand('打开英文评测');

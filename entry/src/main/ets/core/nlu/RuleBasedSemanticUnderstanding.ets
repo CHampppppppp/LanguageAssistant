@@ -7,6 +7,9 @@ const WHITESPACE_PATTERN: RegExp = new RegExp('\\s+', 'g');
 const APP_NAME_PATTERN: RegExp = new RegExp('(?:打开|启动|关闭|退出)(.+?)(?:应用|软件)?$');
 const ALARM_TIME_PATTERN: RegExp = new RegExp('(\\d{1,2})[点:时](?:(\\d{1,2})分?)?');
 const MUSIC_NAME_PATTERN: RegExp = new RegExp('播放(?:音乐|歌曲)?(.+)$');
+const VOLUME_PERCENT_SUFFIX_PATTERN: RegExp = new RegExp('(\\d{1,3})(?:%|％)');
+const VOLUME_PERCENT_PREFIX_PATTERN: RegExp = new RegExp('百分之(\\d{1,3})');
+const VOLUME_LEVEL_PATTERN: RegExp = new RegExp('(\\d+)(?:格|档)');
 const COMMAND_OBJECT_PREFIX_PATTERN: RegExp = new RegExp('^(一下|下|请|帮我)');
 const COMMAND_OBJECT_SUFFIX_PATTERN: RegExp = new RegExp('(应用|软件)$');
 const RULE_HIGH_CONFIDENCE_THRESHOLD: number = 0.75;
@@ -165,6 +168,9 @@ export class RuleBasedSemanticUnderstanding {
       case VoiceIntent.PLAY_MUSIC:
         this.extractMusicName(text, entities);
         break;
+      case VoiceIntent.VOLUME_SET:
+        this.extractVolumeTarget(text, entities);
+        break;
       default:
         break;
     }
@@ -195,6 +201,22 @@ export class RuleBasedSemanticUnderstanding {
       if (musicName !== '音乐' && musicName !== '歌曲') {
         entities.set('music_name', musicName);
       }
+    }
+  }
+
+  private extractVolumeTarget(text: string, entities: Map<string, string>): void {
+    const percentMatch: RegExpMatchArray | null = text.match(VOLUME_PERCENT_SUFFIX_PATTERN) ||
+      text.match(VOLUME_PERCENT_PREFIX_PATTERN);
+    if (percentMatch && percentMatch[1]) {
+      entities.set('volume_target', percentMatch[1]);
+      entities.set('volume_unit', 'percent');
+      return;
+    }
+
+    const levelMatch: RegExpMatchArray | null = text.match(VOLUME_LEVEL_PATTERN);
+    if (levelMatch && levelMatch[1]) {
+      entities.set('volume_target', levelMatch[1]);
+      entities.set('volume_unit', 'level');
     }
   }
 

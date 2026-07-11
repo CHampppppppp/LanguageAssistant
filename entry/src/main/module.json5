@@ -67,6 +67,9 @@
           ],
           "when": "inuse"
         }
+      },
+      {
+        "name": "ohos.permission.ACCESS_NOTIFICATION_POLICY"
       }
     ]
   }

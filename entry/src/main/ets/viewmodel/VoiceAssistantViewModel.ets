@@ -5,6 +5,7 @@ import { DatasetLoader } from '../utils/DatasetLoader';
 import { PerformanceMonitor } from '../utils/PerformanceMonitor';
 import { MockCommandExecutor } from '../core/command/CommandExecutor';
 import { CommandExecutionResult } from '../core/command/CommandResult';
+import { SystemVolumeController } from '../core/command/SystemVolumeController';
 import { TextFeedback } from '../core/feedback/TextFeedback';
 import { IFlytekAsrService } from '../core/asr/IFlytekAsrService';
 import { createEnglishIFlytekBusiness } from '../core/asr/IFlytekTypes';
@@ -51,7 +52,7 @@ export interface TestDetail {
 export class VoiceAssistantViewModel {
   private speechRecognizer: SpeechRecognizer = new SpeechRecognizer();
   private semanticUnderstanding: SemanticUnderstanding = new SemanticUnderstanding();
-  private commandExecutor: MockCommandExecutor = new MockCommandExecutor();
+  private commandExecutor: MockCommandExecutor = new MockCommandExecutor(undefined, new SystemVolumeController());
   private textFeedback: TextFeedback = new TextFeedback();
   private datasetLoader: DatasetLoader | null = null;
   private performanceMonitor: PerformanceMonitor = new PerformanceMonitor();

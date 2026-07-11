@@ -6,6 +6,7 @@ export enum VoiceIntent {
   NEXT_MUSIC = 'next_music',
   VOLUME_UP = 'volume_up',
   VOLUME_DOWN = 'volume_down',
+  VOLUME_SET = 'volume_set',
   SET_ALARM = 'set_alarm',
   OPEN_APP = 'open_app',
   CLOSE_APP = 'close_app',
