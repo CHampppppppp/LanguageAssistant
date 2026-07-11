@@ -6,6 +6,8 @@ import { PerformanceMonitor } from '../utils/PerformanceMonitor';
 import { MockCommandExecutor } from '../core/command/CommandExecutor';
 import { CommandExecutionResult } from '../core/command/CommandResult';
 import { SystemVolumeController } from '../core/command/SystemVolumeController';
+import { SystemAppLauncher } from '../core/command/AppLauncher';
+import { common } from '@kit.AbilityKit';
 import { TextFeedback } from '../core/feedback/TextFeedback';
 import { IFlytekAsrService } from '../core/asr/IFlytekAsrService';
 import { createEnglishIFlytekBusiness } from '../core/asr/IFlytekTypes';
@@ -75,6 +77,11 @@ export class VoiceAssistantViewModel {
 
   setContext(context: Context): void {
     this.context = context;
+    this.commandExecutor = new MockCommandExecutor(
+      undefined,
+      new SystemVolumeController(),
+      new SystemAppLauncher(context as common.UIAbilityContext)
+    );
     console.info(`[ViewModel] Context 已设置：${this.context ? '是' : '否'}`);
   }
 

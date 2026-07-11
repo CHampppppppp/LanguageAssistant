@@ -12,6 +12,7 @@ const VOLUME_PERCENT_PREFIX_PATTERN: RegExp = new RegExp('百分之(\\d{1,3})');
 const VOLUME_LEVEL_PATTERN: RegExp = new RegExp('(\\d+)(?:格|档)');
 const COMMAND_OBJECT_PREFIX_PATTERN: RegExp = new RegExp('^(一下|下|请|帮我)');
 const COMMAND_OBJECT_SUFFIX_PATTERN: RegExp = new RegExp('(应用|软件)$');
+const SUPPORTED_APP_NAMES: string[] = ['图库', '设置', '日历', '电话'];
 const RULE_HIGH_CONFIDENCE_THRESHOLD: number = 0.75;
 const TRANSFORMER_ASSIST_THRESHOLD: number = 0.6;
 
@@ -159,6 +160,8 @@ export class RuleBasedSemanticUnderstanding {
 
     switch (intent) {
       case VoiceIntent.OPEN_APP:
+        this.extractSupportedAppName(text, entities);
+        break;
       case VoiceIntent.CLOSE_APP:
         this.extractAppName(text, entities);
         break;
@@ -185,6 +188,16 @@ export class RuleBasedSemanticUnderstanding {
     }
   }
 
+  private extractSupportedAppName(text: string, entities: Map<string, string>): void {
+    const appMatch: RegExpMatchArray | null = text.match(APP_NAME_PATTERN);
+    if (appMatch && appMatch[1]) {
+      const appName: string = this.normalizeAppName(this.trimCommandObject(appMatch[1]));
+      if (appName) {
+        entities.set('app_name', appName);
+      }
+    }
+  }
+
   private extractAlarmTime(text: string, entities: Map<string, string>): void {
     const timeMatch: RegExpMatchArray | null = text.match(ALARM_TIME_PATTERN);
     if (timeMatch && timeMatch[1]) {
@@ -202,6 +215,16 @@ export class RuleBasedSemanticUnderstanding {
         entities.set('music_name', musicName);
       }
     }
+  }
+
+  private normalizeAppName(value: string): string {
+    const normalized: string = value === '相册' ? '图库' : value;
+    for (let i: number = 0; i < SUPPORTED_APP_NAMES.length; i++) {
+      if (normalized === SUPPORTED_APP_NAMES[i]) {
+        return normalized;
+      }
+    }
+    return '';
   }
 
   private extractVolumeTarget(text: string, entities: Map<string, string>): void {

@@ -76,11 +76,36 @@ export default function semanticUnderstandingTest() {
       expect(command.getEntity('minute')).assertEqual('30');
     });
 
-    it('extracts app name from open app command', 0, () => {
+    it('extracts supported app name from open app command', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('打开图库');
+
+      expect(command.intent).assertEqual(VoiceIntent.OPEN_APP);
+      expect(command.getEntity('app_name')).assertEqual('图库');
+    });
+
+    it('normalizes photo album alias to gallery', 0, () => {
+      const command: VoiceCommand = new SemanticUnderstanding().understand('打开相册');
+
+      expect(command.intent).assertEqual(VoiceIntent.OPEN_APP);
+      expect(command.getEntity('app_name')).assertEqual('图库');
+    });
+
+    it('extracts every supported system app name', 0, () => {
+      const appNames: string[] = ['图库', '设置', '日历', '电话'];
+      for (let i: number = 0; i < appNames.length; i++) {
+        const appName: string = appNames[i];
+        const command: VoiceCommand = new SemanticUnderstanding().understand(`打开${appName}`);
+
+        expect(command.intent).assertEqual(VoiceIntent.OPEN_APP);
+        expect(command.getEntity('app_name')).assertEqual(appName);
+      }
+    });
+
+    it('rejects unsupported app name entity', 0, () => {
       const command: VoiceCommand = new SemanticUnderstanding().understand('打开微信');
 
       expect(command.intent).assertEqual(VoiceIntent.OPEN_APP);
-      expect(command.getEntity('app_name')).assertEqual('微信');
+      expect(command.getEntity('app_name')).assertEqual('');
     });
 
     it('extracts app name from close app command', 0, () => {

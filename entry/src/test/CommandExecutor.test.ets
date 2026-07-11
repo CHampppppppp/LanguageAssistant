@@ -5,6 +5,7 @@ import { TimeProvider } from '../main/ets/core/command/TimeQuery';
 import { VolumeController, VolumeState } from '../main/ets/core/command/VolumeControl';
 import { VoiceIntent } from '../main/ets/core/nlu/VoiceIntent';
 import { VoiceCommand } from '../main/ets/model/VoiceCommand';
+import { AppLauncher } from '../main/ets/core/command/AppLauncher';
 
 class FixedTimeProvider implements TimeProvider {
   now(): Date {
@@ -43,6 +44,22 @@ class FakeVolumeController implements VolumeController {
 
   isSystemBacked(): boolean {
     return true;
+  }
+}
+
+class FakeAppLauncher implements AppLauncher {
+  launchedAppName: string = '';
+  private shouldFail: boolean;
+
+  constructor(shouldFail: boolean = false) {
+    this.shouldFail = shouldFail;
+  }
+
+  async launch(appName: string): Promise<void> {
+    if (this.shouldFail) {
+      throw new Error('ability unavailable');
+    }
+    this.launchedAppName = appName;
   }
 }
 
@@ -191,17 +208,31 @@ export default function commandExecutorTest() {
       expect(result.message).assertEqual('模拟设置闹钟为8点30分');
     });
 
-    it('marks open app command as simulated when app name exists', 0, async () => {
-      const executor = new MockCommandExecutor(new FixedTimeProvider());
-      const command = new VoiceCommand('open_app', '打开微信');
-      command.setEntity('app_name', '微信');
+    it('opens supported app through injected launcher', 0, async () => {
+      const appLauncher = new FakeAppLauncher();
+      const executor = new MockCommandExecutor(new FixedTimeProvider(), undefined, appLauncher);
+      const command = new VoiceCommand('open_app', '打开图库');
+      command.setEntity('app_name', '图库');
 
       const result = await executor.execute(command);
 
-      expect(result.status).assertEqual(CommandExecutionStatus.SIMULATED);
+      expect(result.status).assertEqual(CommandExecutionStatus.SUCCESS);
       expect(result.intent).assertEqual('open_app');
-      expect(result.isSimulated).assertTrue();
-      expect(result.message).assertEqual('模拟打开微信');
+      expect(result.isSimulated).assertFalse();
+      expect(appLauncher.launchedAppName).assertEqual('图库');
+      expect(result.message).assertEqual('已打开图库');
+    });
+
+    it('returns failure when app launcher rejects', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider(), undefined, new FakeAppLauncher(true));
+      const command = new VoiceCommand('open_app', '打开设置');
+      command.setEntity('app_name', '设置');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.FAILED);
+      expect(result.isSimulated).assertFalse();
+      expect(result.message).assertContain('打开设置失败');
     });
 
     it('fails open app command when app name is missing', 0, async () => {

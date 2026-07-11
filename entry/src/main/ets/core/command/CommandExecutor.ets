@@ -3,14 +3,17 @@ import { VoiceIntent } from '../nlu/VoiceIntent';
 import { CommandExecutionResult, CommandExecutionStatus } from './CommandResult';
 import { TimeProvider, TimeQueryService } from './TimeQuery';
 import { VolumeControlService, VolumeController, VolumeDirection, VolumeTargetUnit } from './VolumeControl';
+import { AppLauncher } from './AppLauncher';
 
 export class MockCommandExecutor {
   private timeQueryService: TimeQueryService;
   private volumeControlService: VolumeControlService;
+  private appLauncher: AppLauncher | null;
 
-  constructor(timeProvider?: TimeProvider, volumeController?: VolumeController) {
+  constructor(timeProvider?: TimeProvider, volumeController?: VolumeController, appLauncher?: AppLauncher) {
     this.timeQueryService = timeProvider ? new TimeQueryService(timeProvider) : new TimeQueryService();
     this.volumeControlService = volumeController ? new VolumeControlService(volumeController) : new VolumeControlService();
+    this.appLauncher = appLauncher ? appLauncher : null;
   }
 
   async execute(command: VoiceCommand): Promise<CommandExecutionResult> {
@@ -67,12 +70,25 @@ export class MockCommandExecutor {
     return this.simulate(command.intent, `模拟播放${musicName}`);
   }
 
-  private openApp(command: VoiceCommand): CommandExecutionResult {
+  private async openApp(command: VoiceCommand): Promise<CommandExecutionResult> {
     const appName: string = command.getEntity('app_name');
     if (!appName) {
       return this.fail(command.intent, '请指定要打开的应用名称');
     }
-    return this.simulate(command.intent, `模拟打开${appName}`);
+    if (!this.appLauncher) {
+      return this.fail(command.intent, '应用启动服务尚未初始化');
+    }
+    try {
+      await this.appLauncher.launch(appName);
+      return {
+        status: CommandExecutionStatus.SUCCESS,
+        message: `已打开${appName}`,
+        intent: command.intent,
+        isSimulated: false
+      };
+    } catch (error) {
+      return this.fail(command.intent, `打开${appName}失败：${(error as Error).message}`);
+    }
   }
 
   private closeApp(command: VoiceCommand): CommandExecutionResult {
