@@ -98,7 +98,7 @@ export class VoiceAssistantViewModel {
       const audioBuffer: ArrayBuffer = await this.speechRecognizer.stopRecording();
       return await this.processRecordedAudio(audioBuffer);
     } catch (error) {
-      return this.createFailedRecognitionResult(`错误: ${(error as Error).message}`, '处理失败');
+      return this.createFailedRecognitionResult(`错误: ${error.message}`, '处理失败');
     }
   }
 
@@ -127,7 +127,8 @@ export class VoiceAssistantViewModel {
       };
     } catch (error) {
       this.updateFlowState(AssistantFlowState.FAILED);
-      throw error;
+      const errMsg: string = (error as Error).message || String(error);
+      throw new Error(errMsg);
     }
   }
 

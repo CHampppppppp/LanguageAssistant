@@ -190,7 +190,11 @@ export class RuleBasedSemanticUnderstanding {
   private extractMusicName(text: string, entities: Map<string, string>): void {
     const musicMatch: RegExpMatchArray | null = text.match(MUSIC_NAME_PATTERN);
     if (musicMatch && musicMatch[1]) {
-      entities.set('music_name', this.trimCommandObject(musicMatch[1]));
+      const musicName: string = this.trimCommandObject(musicMatch[1]);
+      // 回溯场景下 "播放音乐" 可能捕获 "音乐"，此处过滤泛称
+      if (musicName !== '音乐' && musicName !== '歌曲') {
+        entities.set('music_name', musicName);
+      }
     }
   }
 
