@@ -3,6 +3,7 @@ import { AssistantConversation } from '../components/AssistantConversation';
 import { ControlButtons } from '../components/ControlButtons';
 import { EvaluationPanel } from '../components/EvaluationPanel';
 import { AssistantFlowState, getAssistantFlowLabel, isAssistantFlowBusy } from '../viewmodel/AssistantFlowState';
+import { ConversationMessage, ConversationRole } from '../model/ConversationMessage';
 import {
   THEME_ACCENT,
   THEME_ACCENT_DARK,
@@ -36,12 +37,14 @@ struct Index {
   @State evaluationSampleInfo: string = '等待开始评测';
   @State isEvaluationPanelVisible: boolean = false;
   @State isEvaluationRunning: boolean = false;
-  @State rawTranscriptText: string = '';
+  @State conversationMessages: ConversationMessage[] = [];
   @State audioLevels: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   @State currentAudioLevel: number = 0;
   @State errorToastText: string = '';
   @State isConversationActive: boolean = false;
   private errorToastTimer: number = -1;
+  private messageSequence: number = 0;
+  private conversationScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     const context: Context = this.getUIContext().getHostContext() as Context;
@@ -80,7 +83,8 @@ struct Index {
   async startConversation(): Promise<void> {
     this.flowState = AssistantFlowState.RECORDING;
     this.feedbackText = '对话已开始，请直接说话。';
-    this.rawTranscriptText = '';
+    this.conversationMessages = [this.createConversationMessage(ConversationRole.ASSISTANT, this.feedbackText)];
+    this.scrollConversationToLatest();
     this.semanticConfidence = 0;
     this.assistantResponseTime = 0;
     this.errorToastText = '';
@@ -92,8 +96,8 @@ struct Index {
     } catch (error) {
       const errMsg: string = this.formatErrorForUi(error as Error);
       this.flowState = AssistantFlowState.FAILED;
-      this.rawTranscriptText = '录音启动失败';
       this.feedbackText = '录音启动失败，请检查麦克风权限。';
+      this.appendConversationMessage(ConversationRole.ASSISTANT, this.feedbackText);
       this.showErrorToast(errMsg);
       console.error('录音启动错误:', error);
     }
@@ -145,8 +149,11 @@ struct Index {
   }
 
   private applyRecognitionResult(result: RecognitionResult): void {
-    this.rawTranscriptText = result.recognizedText || '';
     this.feedbackText = result.feedback;
+    if (result.recognizedText && !result.errorDetail) {
+      this.appendConversationMessage(ConversationRole.USER, result.recognizedText);
+    }
+    this.appendConversationMessage(ConversationRole.ASSISTANT, result.feedback || '我暂时无法处理这条语音。');
     this.semanticConfidence = result.semanticConfidence;
     this.assistantResponseTime = result.responseTime;
     if (result.errorDetail) {
@@ -172,6 +179,27 @@ struct Index {
       this.errorToastText = '';
       this.errorToastTimer = -1;
     }, 2000);
+  }
+
+  private appendConversationMessage(role: ConversationRole, content: string): void {
+    const message: ConversationMessage = this.createConversationMessage(role, content);
+    this.conversationMessages = this.conversationMessages.concat([message]);
+    this.scrollConversationToLatest();
+  }
+
+  private scrollConversationToLatest(): void {
+    setTimeout(() => {
+      this.conversationScroller.scrollEdge(Edge.Bottom);
+    }, 0);
+  }
+
+  private createConversationMessage(role: ConversationRole, content: string): ConversationMessage {
+    this.messageSequence += 1;
+    return {
+      id: `message-${this.messageSequence}`,
+      role,
+      content
+    };
   }
 
   private clearErrorToastTimer(): void {
@@ -211,8 +239,9 @@ struct Index {
 
           Column() {
             AssistantConversation({
-              rawTranscriptText: this.rawTranscriptText,
-              feedbackText: this.feedbackText
+              messages: this.conversationMessages,
+              feedbackText: this.feedbackText,
+              scroller: this.conversationScroller
             })
           }
           .width('100%')

@@ -44,5 +44,20 @@ export default function voiceActivityDetectorTest() {
 
       expect(result === null).assertTrue();
     });
+
+    it('resets after one utterance and detects the next utterance', 0, () => {
+      const detector: VoiceActivityDetector = new VoiceActivityDetector(TEST_OPTIONS);
+      detector.push(new ArrayBuffer(4096), 10);
+      detector.push(new ArrayBuffer(4096), 0);
+      const firstUtterance: ArrayBuffer | null = detector.push(new ArrayBuffer(4096), 0);
+
+      const nextSpeech: ArrayBuffer | null = detector.push(new ArrayBuffer(4096), 10);
+      detector.push(new ArrayBuffer(4096), 0);
+      const secondUtterance: ArrayBuffer | null = detector.push(new ArrayBuffer(4096), 0);
+
+      expect(firstUtterance === null).assertFalse();
+      expect(nextSpeech === null).assertTrue();
+      expect(secondUtterance === null).assertFalse();
+    });
   });
 }

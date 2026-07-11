@@ -21,6 +21,7 @@ export class AudioRecorder {
   private isReading: boolean = false;
   private readLoopPromise: Promise<void> | null = null;
   private conversationActive: boolean = false;
+  private isProcessingUtterance: boolean = false;
   private onUtteranceCompleted: ((audioBuffer: ArrayBuffer) => Promise<void>) | null = null;
   private voiceActivityDetector: VoiceActivityDetector = new VoiceActivityDetector();
 
@@ -111,6 +112,7 @@ export class AudioRecorder {
 
   async startConversation(onUtteranceCompleted: (audioBuffer: ArrayBuffer) => Promise<void>): Promise<void> {
     this.conversationActive = true;
+    this.isProcessingUtterance = false;
     this.onUtteranceCompleted = onUtteranceCompleted;
     this.voiceActivityDetector.reset();
     try {
@@ -124,6 +126,7 @@ export class AudioRecorder {
 
   async stopConversation(): Promise<void> {
     this.conversationActive = false;
+    this.isProcessingUtterance = false;
     this.onUtteranceCompleted = null;
     this.voiceActivityDetector.reset();
     if (this.audioCapturer && this.isReading) {
@@ -146,10 +149,12 @@ export class AudioRecorder {
         if (readResult.byteLength > 0 && this.isReading) {
           this.emitAudioLevel(readResult);
           if (this.conversationActive) {
-            const level: number = AudioRecorder.calculateAudioLevel(readResult);
-            const utterance: ArrayBuffer | null = this.voiceActivityDetector.push(readResult, level);
-            if (utterance) {
-              await this.handleCompletedUtterance(utterance);
+            if (!this.isProcessingUtterance) {
+              const level: number = AudioRecorder.calculateAudioLevel(readResult);
+              const utterance: ArrayBuffer | null = this.voiceActivityDetector.push(readResult, level);
+              if (utterance) {
+                this.handleCompletedUtterance(utterance);
+              }
             }
           } else {
             this.chunks.push(readResult);
@@ -219,12 +224,14 @@ export class AudioRecorder {
     if (!this.onUtteranceCompleted || !this.conversationActive) {
       return;
     }
+    this.isProcessingUtterance = true;
     this.state = RecordingState.RECOGNIZING;
     try {
       await this.onUtteranceCompleted(utterance);
     } catch (error) {
       console.error('[AudioRecorder] 处理语音话轮失败', error);
     } finally {
+      this.isProcessingUtterance = false;
       if (this.conversationActive && this.isReading) {
         this.state = RecordingState.RECORDING;
       }

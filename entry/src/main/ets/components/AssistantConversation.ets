@@ -6,27 +6,35 @@ import {
   THEME_TEXT_INVERSE,
   THEME_TEXT_PRIMARY
 } from './AssistantTheme';
+import { ConversationMessage, ConversationRole } from '../model/ConversationMessage';
 
 @Component
 export struct AssistantConversation {
-  @Prop rawTranscriptText: string = '';
+  @Prop messages: ConversationMessage[] = [];
   @Prop feedbackText: string = '';
+  scroller: Scroller = new Scroller();
 
   build() {
-    Column() {
-      if (this.rawTranscriptText !== '') {
-        this.buildUserBubble(this.rawTranscriptText)
-        this.buildAssistantBubble(this.feedbackText || '我暂时无法处理这条语音。', false)
-      } else {
-        this.buildAssistantBubble(this.feedbackText || '我在这里，点击开始对话即可语音交互。', true)
+    Scroll(this.scroller) {
+      Column() {
+        if (this.messages.length > 0) {
+          ForEach(this.messages, (message: ConversationMessage) => {
+            if (message.role === ConversationRole.USER) {
+              this.buildUserBubble(message.content)
+            } else {
+              this.buildAssistantBubble(message.content, false)
+            }
+          }, (message: ConversationMessage): string => message.id)
+        } else {
+          this.buildAssistantBubble(this.feedbackText || '我在这里，点击开始对话即可语音交互。', true)
+        }
       }
-
-      Blank()
-        .layoutWeight(1)
+      .width('100%')
+      .padding({ top: 8, bottom: 8 })
     }
     .width(THEME_CARD_WIDTH)
     .height('100%')
-    .padding({ top: 8, bottom: 8 })
+    .scrollBar(BarState.Off)
   }
 
   @Builder
