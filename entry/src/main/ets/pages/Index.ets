@@ -25,8 +25,6 @@ import {
 @Component
 struct Index {
   @State viewModel: VoiceAssistantViewModel = new VoiceAssistantViewModel();
-  @State recognitionText: string = '';
-  @State commandResult: string = '';
   @State feedbackText: string = '我在这里，点击麦克风开始语音交互。';
   @State flowState: AssistantFlowState = AssistantFlowState.IDLE;
   @State semanticConfidence: number = 0;
@@ -81,8 +79,6 @@ struct Index {
 
   async startConversation(): Promise<void> {
     this.flowState = AssistantFlowState.RECORDING;
-    this.recognitionText = '正在监听...';
-    this.commandResult = '';
     this.feedbackText = '对话已开始，请直接说话。';
     this.rawTranscriptText = '';
     this.semanticConfidence = 0;
@@ -96,7 +92,6 @@ struct Index {
     } catch (error) {
       const errMsg: string = this.formatErrorForUi(error as Error);
       this.flowState = AssistantFlowState.FAILED;
-      this.recognitionText = '录音启动失败，请检查麦克风权限';
       this.rawTranscriptText = '录音启动失败';
       this.feedbackText = '录音启动失败，请检查麦克风权限。';
       this.showErrorToast(errMsg);
@@ -150,9 +145,7 @@ struct Index {
   }
 
   private applyRecognitionResult(result: RecognitionResult): void {
-    this.recognitionText = result.recognizedText || '未识别到语音内容';
     this.rawTranscriptText = result.recognizedText || '';
-    this.commandResult = result.commandResult;
     this.feedbackText = result.feedback;
     this.semanticConfidence = result.semanticConfidence;
     this.assistantResponseTime = result.responseTime;
@@ -219,12 +212,7 @@ struct Index {
           Column() {
             AssistantConversation({
               rawTranscriptText: this.rawTranscriptText,
-              recognitionText: this.recognitionText,
-              commandResult: this.commandResult,
-              feedbackText: this.feedbackText,
-              isRecording: this.flowState === AssistantFlowState.RECORDING,
-              currentAudioLevel: this.currentAudioLevel,
-              audioLevels: this.audioLevels
+              feedbackText: this.feedbackText
             })
           }
           .width('100%')
@@ -233,6 +221,8 @@ struct Index {
           ControlButtons({
             isConversationActive: this.isConversationActive,
             isBusy: isAssistantFlowBusy(this.flowState),
+            currentAudioLevel: this.currentAudioLevel,
+            audioLevels: this.audioLevels,
             startAction: () => this.startConversation(),
             endConversationAction: () => this.endConversation(),
             openEvaluationAction: () => this.openEvaluationPanel()
