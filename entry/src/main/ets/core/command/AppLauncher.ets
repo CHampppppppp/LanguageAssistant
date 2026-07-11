@@ -58,7 +58,7 @@ export class SystemAppLauncher implements AppLauncher {
       case '日历':
         return CALENDAR_TARGETS;
       default:
-        throw new Error(`不支持打开${appName}`);
+        throw new Error(`未找到可启动的应用：${appName}`);
     }
   }
 

@@ -4,6 +4,7 @@ import { IntentRule, INTENT_RULES } from './IntentRule';
 import { VoiceIntent } from './VoiceIntent';
 
 const WHITESPACE_PATTERN: RegExp = new RegExp('\\s+', 'g');
+const TERMINAL_PUNCTUATION_PATTERN: RegExp = new RegExp('[。！？!?，,；;：:、.]+$', 'g');
 const APP_NAME_PATTERN: RegExp = new RegExp('(?:打开|启动|关闭|退出)(.+?)(?:应用|软件)?$');
 const ALARM_TIME_PATTERN: RegExp = new RegExp('(\\d{1,2})[点:时](?:(\\d{1,2})分?)?');
 const MUSIC_NAME_PATTERN: RegExp = new RegExp('播放(?:音乐|歌曲)?(.+)$');
@@ -12,7 +13,6 @@ const VOLUME_PERCENT_PREFIX_PATTERN: RegExp = new RegExp('百分之(\\d{1,3})');
 const VOLUME_LEVEL_PATTERN: RegExp = new RegExp('(\\d+)(?:格|档)');
 const COMMAND_OBJECT_PREFIX_PATTERN: RegExp = new RegExp('^(一下|下|请|帮我)');
 const COMMAND_OBJECT_SUFFIX_PATTERN: RegExp = new RegExp('(应用|软件)$');
-const SUPPORTED_APP_NAMES: string[] = ['图库', '设置', '日历', '电话'];
 const RULE_HIGH_CONFIDENCE_THRESHOLD: number = 0.75;
 const TRANSFORMER_ASSIST_THRESHOLD: number = 0.6;
 
@@ -52,7 +52,10 @@ export class RuleBasedSemanticUnderstanding {
   }
 
   private normalize(text: string): string {
-    return text.toLowerCase().replace(WHITESPACE_PATTERN, '').trim();
+    return text.toLowerCase()
+      .replace(WHITESPACE_PATTERN, '')
+      .replace(TERMINAL_PUNCTUATION_PATTERN, '')
+      .trim();
   }
 
   private detectRuleIntent(text: string): IntentDetection {
@@ -218,13 +221,7 @@ export class RuleBasedSemanticUnderstanding {
   }
 
   private normalizeAppName(value: string): string {
-    const normalized: string = value === '相册' ? '图库' : value;
-    for (let i: number = 0; i < SUPPORTED_APP_NAMES.length; i++) {
-      if (normalized === SUPPORTED_APP_NAMES[i]) {
-        return normalized;
-      }
-    }
-    return '';
+    return value === '相册' ? '图库' : value;
   }
 
   private extractVolumeTarget(text: string, entities: Map<string, string>): void {

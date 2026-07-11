@@ -101,11 +101,21 @@ export default function semanticUnderstandingTest() {
       }
     });
 
-    it('rejects unsupported app name entity', 0, () => {
+    it('extracts app names without a semantic whitelist', 0, () => {
       const command: VoiceCommand = new SemanticUnderstanding().understand('打开微信');
 
       expect(command.intent).assertEqual(VoiceIntent.OPEN_APP);
-      expect(command.getEntity('app_name')).assertEqual('');
+      expect(command.getEntity('app_name')).assertEqual('微信');
+    });
+
+    it('removes ASR terminal punctuation from app names', 0, () => {
+      const phoneCommand: VoiceCommand = new SemanticUnderstanding().understand('打开电话。');
+      const galleryCommand: VoiceCommand = new SemanticUnderstanding().understand('请打开相册！');
+
+      expect(phoneCommand.intent).assertEqual(VoiceIntent.OPEN_APP);
+      expect(phoneCommand.getEntity('app_name')).assertEqual('电话');
+      expect(galleryCommand.intent).assertEqual(VoiceIntent.OPEN_APP);
+      expect(galleryCommand.getEntity('app_name')).assertEqual('图库');
     });
 
     it('extracts app name from close app command', 0, () => {
