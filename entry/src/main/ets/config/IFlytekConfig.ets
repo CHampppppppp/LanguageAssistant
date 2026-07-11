@@ -10,9 +10,9 @@ interface IFlytekConfigType {
 }
 
 export const IFlytekConfig: IFlytekConfigType = {
-  appId: 'a431b2e9',
-  apiKey: 'd523cac453342e4503b9007c2748bc8d',
-  apiSecret: 'ZWVkMDNkODExYTY1YzZhOWNkZjkwZWY1',
+  appId: '1',
+  apiKey: '1',
+  apiSecret: '1',
   apiUrl: 'wss://iat-api.xfyun.cn/v2/iat',
   apiHost: 'iat-api.xfyun.cn',
   sparkApiUrl: 'https://spark-api-open.xf-yun.com/v1/chat/completions',

@@ -25,6 +25,10 @@ const PHONE_TARGETS: AppLaunchTarget[] = [
   { bundleName: 'com.huawei.hmos.contacts', abilityName: 'com.huawei.hmos.contacts.MainAbility' },
   { bundleName: 'com.ohos.contacts', abilityName: 'com.ohos.contacts.MainAbility' }
 ];
+const BROWSER_TARGETS: AppLaunchTarget[] = [
+  { bundleName: 'com.huawei.hmos.browser', abilityName: 'com.huawei.hmos.browser.MainAbility' },
+  { bundleName: 'com.ohos.browser', abilityName: 'com.ohos.browser.MainAbility' }
+];
 const DIAL_ACTION: string = 'ohos.want.action.dial';
 
 export class SystemAppLauncher implements AppLauncher {
@@ -57,6 +61,10 @@ export class SystemAppLauncher implements AppLauncher {
         return SETTINGS_TARGETS;
       case '日历':
         return CALENDAR_TARGETS;
+      case '浏览器':
+      case '网页':
+      case '上网':
+        return BROWSER_TARGETS;
       default:
         throw new Error(`未找到可启动的应用：${appName}`);
     }

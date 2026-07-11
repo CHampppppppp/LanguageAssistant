@@ -130,11 +130,13 @@ struct Index {
 
     try {
       const result = await this.viewModel.testWithDataset();
+      console.info(`[Index] 评测结果返回，wordAccuracy=${result.wordAccuracy}, avgResponseTime=${result.avgResponseTime}, evaluatedCount=${result.evaluatedCount}`);
       this.evaluationStatusText = result.wordAccuracy >= 93 ? '评测达到 93% 目标' : '评测未达到 93% 目标';
       this.evaluationSampleInfo = this.buildEvaluationSampleInfo(result);
       this.feedbackText = `LibriSpeech 英文评测完成，词准确率 ${result.wordAccuracy}%。`;
       this.evaluationResponseTime = result.avgResponseTime;
       this.evaluationAccuracy = result.wordAccuracy;
+      console.info(`[Index] 评测结果已更新到 UI 状态`);
     } catch (error) {
       const errMsg: string = this.formatErrorForUi(error as Error);
       this.flowState = AssistantFlowState.FAILED;

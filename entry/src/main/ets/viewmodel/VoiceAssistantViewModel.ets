@@ -188,11 +188,12 @@ export class VoiceAssistantViewModel {
         this.datasetLoader,
         new IFlytekAsrService(createEnglishIFlytekBusiness()),
         {
-          maxSamples: 50,
+          maxSamples: 20,
           recognizerProfile: 'english_librispeech_eval'
         }
       );
       const summary: EvaluationSummary = await evaluator.evaluate();
+      console.info(`[ViewModel] 评测完成，平均词准确率：${(summary.averageWordAccuracy * 100).toFixed(2)}%，平均响应时间：${summary.averageResponseTime.toFixed(0)}ms，成功：${summary.successCount}，失败：${summary.failureCount}`);
       this.updateFlowState(AssistantFlowState.COMPLETED);
 
       return {

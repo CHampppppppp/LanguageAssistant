@@ -20,6 +20,7 @@ const CONTINUED_FRAME_STATUS: number = 1;
 const LAST_FRAME_STATUS: number = 2;
 const PCM_FORMAT: string = 'audio/L16;rate=16000';
 const PCM_ENCODING: string = 'raw';
+const ASR_TIMEOUT_MS: number = 15000;
 
 export class IFlytekAsrService implements AsrService {
   private business: IFlytekBusiness;
@@ -36,23 +37,34 @@ export class IFlytekAsrService implements AsrService {
     }
 
     validateIFlytekConfig();
+    console.info(`[IFlytekAsrService] 开始识别，音频大小：${audioBuffer.byteLength} 字节`);
     const socket: webSocket.WebSocket = webSocket.createWebSocket();
     const resultText: string[] = [];
     let completed: boolean = false;
 
     return new Promise<string>((resolve: (value: string) => void, reject: (reason: Error) => void) => {
+      let timeoutId: number = -1;
       const finish = (error: Error | null): void => {
         if (completed) {
           return;
         }
         completed = true;
+        if (timeoutId !== -1) {
+          clearTimeout(timeoutId);
+        }
         this.closeSocket(socket);
         if (error) {
+          console.error(`[IFlytekAsrService] 识别失败：${error.message}`);
           reject(error);
           return;
         }
+        console.info(`[IFlytekAsrService] 识别成功，文本：${resultText.join('')}`);
         resolve(resultText.join(''));
       };
+
+      timeoutId = setTimeout(() => {
+        finish(new Error(`科大讯飞 ASR 请求超时（${ASR_TIMEOUT_MS / 1000}秒无响应）`));
+      }, ASR_TIMEOUT_MS);
 
       socket.on('message', (error: BusinessError, message: string | ArrayBuffer) => {
         if (error) {
@@ -93,8 +105,10 @@ export class IFlytekAsrService implements AsrService {
           finish(new Error(`科大讯飞 WebSocket 打开失败: ${this.formatBusinessError(error)}`));
           return;
         }
+        console.info('[IFlytekAsrService] WebSocket 已连接，开始发送音频帧');
         this.sendFramesAfterOpen(socket, audioBuffer, finish);
       });
+      console.info('[IFlytekAsrService] 正在连接讯飞 WebSocket...');
       await socket.connect(await this.createAuthenticatedUrl());
     } catch (error) {
       finish(new Error(`科大讯飞 WebSocket 请求失败: ${this.formatError(error as Error)}`));

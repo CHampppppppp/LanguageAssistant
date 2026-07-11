@@ -29,14 +29,16 @@ export class AccuracyMetric {
   private static normalizeWords(text: string): string[] {
     const normalized: string = text
       .toLowerCase()
+      .replace(new RegExp("'", 'g'), '')
       .replace(new RegExp('[^a-z0-9\\s]', 'g'), ' ')
+      .replace(new RegExp('\\s+', 'g'), ' ')
       .trim();
 
     if (!normalized) {
       return [];
     }
 
-    return normalized.split(new RegExp('\\s+'));
+    return normalized.split(' ');
   }
 
   private static calculateEditDistance(referenceWords: string[], hypothesisWords: string[]): number {
