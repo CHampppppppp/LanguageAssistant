@@ -1,1 +1,1 @@
-export { RuleBasedSemanticUnderstanding as SemanticUnderstanding } from './nlu/RuleBasedSemanticUnderstanding';
+export { SparkIntentClassifier as SemanticUnderstanding } from './nlu/SparkIntentClassifier';

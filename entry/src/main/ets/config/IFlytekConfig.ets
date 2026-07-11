@@ -4,6 +4,9 @@ interface IFlytekConfigType {
   apiSecret: string;
   apiUrl: string;
   apiHost: string;
+  sparkApiUrl: string;
+  sparkModel: string;
+  sparkApiPassword: string;
 }
 
 export const IFlytekConfig: IFlytekConfigType = {
@@ -11,7 +14,10 @@ export const IFlytekConfig: IFlytekConfigType = {
   apiKey: 'd523cac453342e4503b9007c2748bc8d',
   apiSecret: 'ZWVkMDNkODExYTY1YzZhOWNkZjkwZWY1',
   apiUrl: 'wss://iat-api.xfyun.cn/v2/iat',
-  apiHost: 'iat-api.xfyun.cn'
+  apiHost: 'iat-api.xfyun.cn',
+  sparkApiUrl: 'https://spark-api-open.xf-yun.com/v1/chat/completions',
+  sparkModel: 'lite',
+  sparkApiPassword: 'SylKtsRlBKwfmEmytBVN:XlCPOaUvfgwuVejKpYRC'
 };
 
 export function validateIFlytekConfig(): void {

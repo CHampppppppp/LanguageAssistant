@@ -202,7 +202,7 @@ export class VoiceAssistantViewModel {
       return this.createFailedRecognitionResult('识别失败，未返回文字', '请重试', detail);
     }
 
-    const command: VoiceCommand = this.semanticUnderstanding.understand(recognizedText);
+    const command: VoiceCommand = await this.semanticUnderstanding.understand(recognizedText);
     this.updateFlowState(AssistantFlowState.EXECUTING);
     const executionResult: CommandExecutionResult = await this.commandExecutor.execute(command);
     const feedback: string = this.textFeedback.createFeedback(executionResult.message);

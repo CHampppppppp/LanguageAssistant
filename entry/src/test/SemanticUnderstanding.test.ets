@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@ohos/hypium';
-import { SemanticUnderstanding } from '../main/ets/core/SemanticUnderstanding';
+import { RuleBasedSemanticUnderstanding as SemanticUnderstanding } from '../main/ets/core/nlu/RuleBasedSemanticUnderstanding';
 import { VoiceIntent } from '../main/ets/core/nlu/VoiceIntent';
 import { VoiceCommand } from '../main/ets/model/VoiceCommand';
 

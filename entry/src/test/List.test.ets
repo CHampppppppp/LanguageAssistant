@@ -9,6 +9,7 @@ import semanticUnderstandingTest from './SemanticUnderstanding.test';
 import transformerModelTest from './TransformerModel.test';
 import assistantFlowStateTest from './AssistantFlowState.test';
 import voiceActivityDetectorTest from './VoiceActivityDetector.test';
+import sparkIntentClassifierTest from './SparkIntentClassifier.test';
 
 export default function testsuite() {
   localUnitTest();
@@ -18,6 +19,7 @@ export default function testsuite() {
   transformerModelTest();
   assistantFlowStateTest();
   voiceActivityDetectorTest();
+  sparkIntentClassifierTest();
   performanceMonitorTest();
   audioUtilsTest();
   speechRecognizerTest();
