@@ -1,6 +1,8 @@
 export interface IFlytekResponse {
   code: number;
-  message: string;
+  message?: string;
+  desc?: string;
+  error?: string;
   data?: IFlytekData;
 }
 

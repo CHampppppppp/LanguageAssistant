@@ -62,7 +62,7 @@ export class IFlytekAsrService implements AsrService {
         extraData: JSON.stringify(requestBody)
       });
       const data: IFlytekResponse = JSON.parse(response.result as string) as IFlytekResponse;
-      return IFlytekResponseParser.parse(data);
+      return IFlytekResponseParser.parse(data, response.responseCode);
     } finally {
       httpRequest.destroy();
     }
