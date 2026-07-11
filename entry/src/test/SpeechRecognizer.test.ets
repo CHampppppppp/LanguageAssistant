@@ -79,6 +79,7 @@ export default function speechRecognizerTest() {
       expect(asrService.lastBufferLength).assertEqual(2);
       expect(recorder.getState()).assertEqual(RecordingState.COMPLETED);
       expect(recognizer.getLastErrorMessage()).assertEqual('');
+      expect(recognizer.getLastFailureKind()).assertEqual('none');
     });
 
     it('marks failed state when audio buffer is empty', 0, async () => {
@@ -92,6 +93,7 @@ export default function speechRecognizerTest() {
       expect(asrService.lastBufferLength).assertEqual(0);
       expect(recorder.getState()).assertEqual(RecordingState.FAILED);
       expect(recognizer.getLastErrorMessage()).assertEqual('音频数据为空或长度无效');
+      expect(recognizer.getLastFailureKind()).assertEqual('empty_audio');
     });
 
     it('delegates recording start and stop to audio recorder', 0, async () => {
@@ -116,6 +118,20 @@ export default function speechRecognizerTest() {
       expect(result).assertEqual('');
       expect(recorder.getState()).assertEqual(RecordingState.FAILED);
       expect(recognizer.getLastErrorMessage()).assertContain('mock asr failure');
+      expect(recognizer.getLastFailureKind()).assertEqual('unknown');
+    });
+
+    it('normalizes recognized text and exposes profile boundary note', 0, async () => {
+      const recorder: FakeAudioRecorder = new FakeAudioRecorder();
+      const recognizer: SpeechRecognizer = new SpeechRecognizer(recorder, new FakeAsrService(' hello   world \n'));
+
+      const result: string = await recognizer.recognize(new Uint8Array([1, 2]).buffer);
+      const profileInfo = recognizer.getRecognitionProfileInfo();
+
+      expect(result).assertEqual('hello world');
+      expect(recognizer.getLastRecognizedText()).assertEqual('hello world');
+      expect(profileInfo.profileId).assertEqual('chinese_realtime');
+      expect(profileInfo.boundaryNote).assertContain('LibriSpeech');
     });
   });
 }

@@ -12,18 +12,39 @@ const PCM16_FULL_SCALE: number = 32768;
 const MIN_DISPLAY_DBFS: number = -60;
 const MAX_DISPLAY_DBFS: number = -6;
 
+export interface RecordingDiagnostics {
+  durationMs: number;
+  capturedBytes: number;
+  chunkCount: number;
+  readCount: number;
+  isEmptyAudio: boolean;
+  finalState: RecordingState;
+  errorMessage: string;
+}
+
 export class AudioRecorder {
   private audioCapturer: audio.AudioCapturer | null = null;
   private state: RecordingState = RecordingState.IDLE;
   private onAudioLevelChanged: ((level: number) => void) | null = null;
   private chunks: ArrayBuffer[] = [];
   private totalBytes: number = 0;
+  private readCount: number = 0;
   private isReading: boolean = false;
   private readLoopPromise: Promise<void> | null = null;
   private conversationActive: boolean = false;
   private isProcessingUtterance: boolean = false;
   private onUtteranceCompleted: ((audioBuffer: ArrayBuffer) => Promise<void>) | null = null;
   private voiceActivityDetector: VoiceActivityDetector = new VoiceActivityDetector();
+  private recordingStartedAt: number = 0;
+  private lastDiagnostics: RecordingDiagnostics = {
+    durationMs: 0,
+    capturedBytes: 0,
+    chunkCount: 0,
+    readCount: 0,
+    isEmptyAudio: true,
+    finalState: RecordingState.IDLE,
+    errorMessage: ''
+  };
 
   setAudioLevelCallback(callback: (level: number) => void): void {
     this.onAudioLevelChanged = callback;
@@ -39,6 +60,16 @@ export class AudioRecorder {
     }
 
     try {
+      this.lastDiagnostics = {
+        durationMs: 0,
+        capturedBytes: 0,
+        chunkCount: 0,
+        readCount: 0,
+        isEmptyAudio: true,
+        finalState: RecordingState.IDLE,
+        errorMessage: ''
+      };
+      this.recordingStartedAt = 0;
       await this.safeReleaseCapturer();
       const streamInfo: audio.AudioStreamInfo = {
         samplingRate: SAMPLE_RATE_16K,
@@ -55,6 +86,7 @@ export class AudioRecorder {
       this.resetAudioChunks();
       this.audioCapturer = await audio.createAudioCapturer({ streamInfo, capturerInfo });
       await this.audioCapturer.start();
+      this.recordingStartedAt = Date.now();
       this.state = RecordingState.RECORDING;
       this.startReadLoop(this.audioCapturer);
       this.emitAudioLevel(new ArrayBuffer(0));
@@ -77,6 +109,15 @@ export class AudioRecorder {
       await this.waitReadLoopStopped();
       await this.safeReleaseCapturer();
       this.state = RecordingState.COMPLETED;
+      this.lastDiagnostics = {
+        durationMs: this.recordingStartedAt > 0 ? Date.now() - this.recordingStartedAt : 0,
+        capturedBytes: this.totalBytes,
+        chunkCount: this.chunks.length,
+        readCount: this.readCount,
+        isEmptyAudio: this.totalBytes === 0,
+        finalState: this.state,
+        errorMessage: ''
+      };
       this.emitAudioLevel(new ArrayBuffer(0));
       return this.mergeArrayBuffers(this.chunks, this.totalBytes);
     } catch (error) {
@@ -137,6 +178,18 @@ export class AudioRecorder {
     this.emitAudioLevel(new ArrayBuffer(0));
   }
 
+  getLastDiagnostics(): RecordingDiagnostics {
+    return {
+      durationMs: this.lastDiagnostics.durationMs,
+      capturedBytes: this.lastDiagnostics.capturedBytes,
+      chunkCount: this.lastDiagnostics.chunkCount,
+      readCount: this.lastDiagnostics.readCount,
+      isEmptyAudio: this.lastDiagnostics.isEmptyAudio,
+      finalState: this.lastDiagnostics.finalState,
+      errorMessage: this.lastDiagnostics.errorMessage
+    };
+  }
+
   private startReadLoop(capturer: audio.AudioCapturer): void {
     this.isReading = true;
     this.readLoopPromise = this.readAudioLoop(capturer);
@@ -146,6 +199,7 @@ export class AudioRecorder {
     while (this.isReading && this.audioCapturer === capturer) {
       try {
         const readResult: ArrayBuffer = await capturer.read(READ_BUFFER_SIZE, true);
+        this.readCount++;
         if (readResult.byteLength > 0 && this.isReading) {
           this.emitAudioLevel(readResult);
           if (this.conversationActive) {
@@ -187,6 +241,7 @@ export class AudioRecorder {
   private resetAudioChunks(): void {
     this.chunks = [];
     this.totalBytes = 0;
+    this.readCount = 0;
   }
 
   private emitAudioLevel(buffer: ArrayBuffer): void {
@@ -246,6 +301,15 @@ export class AudioRecorder {
     const detail: string = typeof error.code === 'number'
       ? `${error.code}, ${error.message}`
       : String(error);
+    this.lastDiagnostics = {
+      durationMs: this.recordingStartedAt > 0 ? Date.now() - this.recordingStartedAt : 0,
+      capturedBytes: this.totalBytes,
+      chunkCount: this.chunks.length,
+      readCount: this.readCount,
+      isEmptyAudio: this.totalBytes === 0,
+      finalState: this.state,
+      errorMessage: `${prefix}: ${detail}`
+    };
     throw new Error(`${prefix}: ${detail}`);
   }
 
