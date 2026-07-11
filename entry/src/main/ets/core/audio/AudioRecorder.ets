@@ -7,12 +7,15 @@ const MONO_CHANNEL: audio.AudioChannel = audio.AudioChannel.CHANNEL_1;
 const PCM_16BIT: audio.AudioSampleFormat = audio.AudioSampleFormat.SAMPLE_FORMAT_S16LE;
 const RAW_ENCODING: audio.AudioEncodingType = audio.AudioEncodingType.ENCODING_TYPE_RAW;
 const READ_BUFFER_SIZE: number = 4096;
-const MAX_READ_COUNT: number = 240;
 
 export class AudioRecorder {
   private audioCapturer: audio.AudioCapturer | null = null;
   private state: RecordingState = RecordingState.IDLE;
   private onAudioLevelChanged: ((level: number) => void) | null = null;
+  private chunks: ArrayBuffer[] = [];
+  private totalBytes: number = 0;
+  private isReading: boolean = false;
+  private readLoopPromise: Promise<void> | null = null;
 
   setAudioLevelCallback(callback: (level: number) => void): void {
     this.onAudioLevelChanged = callback;
@@ -41,9 +44,11 @@ export class AudioRecorder {
       };
 
       this.state = RecordingState.IDLE;
+      this.resetAudioChunks();
       this.audioCapturer = await audio.createAudioCapturer({ streamInfo, capturerInfo });
       await this.audioCapturer.start();
       this.state = RecordingState.RECORDING;
+      this.startReadLoop(this.audioCapturer);
       this.emitAudioLevel(new ArrayBuffer(0));
     } catch (error) {
       await this.handleFailure(error as BusinessError, '录制失败');
@@ -59,28 +64,13 @@ export class AudioRecorder {
 
     try {
       const capturer: audio.AudioCapturer = this.audioCapturer;
-      const chunks: ArrayBuffer[] = [];
-      let totalBytes: number = 0;
-      let readCount: number = 0;
-      let readLen: number = 0;
-
-      do {
-        const readResult: ArrayBuffer = await capturer.read(READ_BUFFER_SIZE, true);
-        readLen = readResult.byteLength;
-        readCount++;
-
-        if (readLen > 0) {
-          chunks.push(readResult);
-          totalBytes += readLen;
-          this.emitAudioLevel(readResult);
-        }
-      } while (readLen > 0 && readCount < MAX_READ_COUNT);
-
+      this.isReading = false;
       await capturer.stop();
+      await this.waitReadLoopStopped();
       await this.safeReleaseCapturer();
       this.state = RecordingState.COMPLETED;
       this.emitAudioLevel(new ArrayBuffer(0));
-      return this.mergeArrayBuffers(chunks, totalBytes);
+      return this.mergeArrayBuffers(this.chunks, this.totalBytes);
     } catch (error) {
       return await this.handleFailure(error as BusinessError, '停止录制失败');
     }
@@ -112,6 +102,48 @@ export class AudioRecorder {
     this.state = RecordingState.IDLE;
   }
 
+  private startReadLoop(capturer: audio.AudioCapturer): void {
+    this.isReading = true;
+    this.readLoopPromise = this.readAudioLoop(capturer);
+  }
+
+  private async readAudioLoop(capturer: audio.AudioCapturer): Promise<void> {
+    while (this.isReading && this.audioCapturer === capturer) {
+      try {
+        const readResult: ArrayBuffer = await capturer.read(READ_BUFFER_SIZE, true);
+        if (readResult.byteLength > 0 && this.isReading) {
+          this.chunks.push(readResult);
+          this.totalBytes += readResult.byteLength;
+          this.emitAudioLevel(readResult);
+        }
+      } catch (error) {
+        if (this.isReading) {
+          console.warn('[AudioRecorder] 读取音频数据失败', error);
+        }
+        return;
+      }
+    }
+  }
+
+  private async waitReadLoopStopped(): Promise<void> {
+    if (!this.readLoopPromise) {
+      return;
+    }
+
+    try {
+      await this.readLoopPromise;
+    } catch (error) {
+      console.warn('[AudioRecorder] 等待读取循环结束失败', error);
+    } finally {
+      this.readLoopPromise = null;
+    }
+  }
+
+  private resetAudioChunks(): void {
+    this.chunks = [];
+    this.totalBytes = 0;
+  }
+
   private emitAudioLevel(buffer: ArrayBuffer): void {
     if (!this.onAudioLevelChanged) {
       return;
@@ -131,7 +163,9 @@ export class AudioRecorder {
 
   private async handleFailure(error: BusinessError, prefix: string): Promise<never> {
     this.state = RecordingState.FAILED;
+    this.isReading = false;
     await this.safeReleaseCapturer();
+    await this.waitReadLoopStopped();
     const detail: string = typeof error.code === 'number'
       ? `${error.code}, ${error.message}`
       : String(error);

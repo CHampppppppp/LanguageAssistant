@@ -37,7 +37,7 @@ export struct RecordingIndicator {
         .justifyContent(FlexAlign.Center)
 
         if (this.currentAudioLevel === 0) {
-          Text('未检测到音频输入，请检查麦克风权限')
+          Text('未检测到音频输入，请检查模拟器输入源')
             .fontSize(12)
             .fontColor(THEME_DANGER)
             .margin({ top: 8 })

@@ -98,7 +98,7 @@ export class VoiceAssistantViewModel {
       const audioBuffer: ArrayBuffer = await this.speechRecognizer.stopRecording();
       return await this.processRecordedAudio(audioBuffer);
     } catch (error) {
-      return this.createFailedRecognitionResult(`错误: ${error.message}`, '处理失败');
+      return this.createFailedRecognitionResult(`错误: ${(error as Error).message}`, '处理失败');
     }
   }
 
@@ -136,7 +136,10 @@ export class VoiceAssistantViewModel {
     const startTime: number = Date.now();
 
     if (audioBuffer.byteLength === 0) {
-      return this.createFailedRecognitionResult('未检测到音频数据', '请检查麦克风权限');
+      return this.createFailedRecognitionResult(
+        '未检测到音频输入',
+        '请确认模拟器麦克风输入源、宿主机麦克风权限和录音时长'
+      );
     }
 
     this.updateFlowState(AssistantFlowState.RECOGNIZING);
