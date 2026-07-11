@@ -1,8 +1,6 @@
 import { AssistantUiAction, RecognitionResult, TestDetail, TestResult, VoiceAssistantViewModel } from '../viewmodel/VoiceAssistantViewModel';
-import { StatusPanel } from '../components/StatusPanel';
-import { InfoPanel } from '../components/InfoPanel';
+import { AssistantConversation } from '../components/AssistantConversation';
 import { ControlButtons } from '../components/ControlButtons';
-import { RecordingIndicator } from '../components/RecordingIndicator';
 import { EvaluationPanel } from '../components/EvaluationPanel';
 import { AssistantFlowState, getAssistantFlowLabel, isAssistantFlowBusy } from '../viewmodel/AssistantFlowState';
 import {
@@ -11,16 +9,14 @@ import {
   THEME_BORDER,
   THEME_CARD_WIDTH,
   THEME_PAGE_BACKGROUND,
+  THEME_SUCCESS,
   THEME_SHADOW_STRONG,
   THEME_SURFACE,
-  THEME_SURFACE_AMBER,
-  THEME_SURFACE_BLUE,
-  THEME_SURFACE_GREEN,
+  THEME_SURFACE_MUTED,
   THEME_SURFACE_RED,
   THEME_TEXT_INVERSE,
   THEME_TEXT_ON_ACCENT_MUTED,
-  THEME_TEXT_PRIMARY,
-  THEME_TEXT_SECONDARY,
+  THEME_TEXT_MUTED,
   THEME_DANGER,
   THEME_ACCENT_SHADOW
 } from '../components/AssistantTheme';
@@ -29,7 +25,7 @@ import {
 @Component
 struct Index {
   @State viewModel: VoiceAssistantViewModel = new VoiceAssistantViewModel();
-  @State recognitionText: string = '说出你的指令，例如：现在几点了 / 准确率评测';
+  @State recognitionText: string = '';
   @State commandResult: string = '';
   @State feedbackText: string = '我在这里，点击麦克风开始语音交互。';
   @State flowState: AssistantFlowState = AssistantFlowState.IDLE;
@@ -105,8 +101,9 @@ struct Index {
 
   async stopRecording(): Promise<void> {
     this.flowState = AssistantFlowState.RECOGNIZING;
-    this.recognitionText = '正在处理录音...';
-    this.rawTranscriptText = '正在识别语音...';
+    this.recognitionText = '';
+    this.rawTranscriptText = '';
+    this.feedbackText = '我正在处理这段语音。';
 
     try {
       const result = await this.viewModel.stopAndProcessRecording();
@@ -214,65 +211,24 @@ struct Index {
   build() {
     Stack({ alignContent: Alignment.TopEnd }) {
       Stack({ alignContent: Alignment.Bottom }) {
-        Scroll() {
+        Column() {
+          this.buildHeader()
+
+          this.buildAssistantStatus()
+
           Column() {
-            this.buildHeader()
-
-          StatusPanel({
-            flowStateLabel: getAssistantFlowLabel(this.flowState),
-            responseTime: this.assistantResponseTime,
-            semanticConfidence: this.semanticConfidence
-          })
-
-          RecordingIndicator({
-            isRecording: this.flowState === AssistantFlowState.RECORDING,
-            currentAudioLevel: this.currentAudioLevel,
-            audioLevels: this.audioLevels
-          })
-
-          InfoPanel({
-            title: '我听到的内容',
-            value: this.rawTranscriptText,
-            placeholder: '语音识别的文字将显示在这里...',
-            panelBackgroundColor: THEME_SURFACE_BLUE,
-            panelBorderColor: THEME_BORDER,
-            textColor: THEME_TEXT_PRIMARY,
-            panelHeight: 90,
-            editable: true
-          })
-
-          InfoPanel({
-            title: '助手理解',
-            value: this.recognitionText,
-            placeholder: '暂无识别结果',
-            panelBackgroundColor: THEME_SURFACE,
-            panelBorderColor: THEME_BORDER,
-            textColor: THEME_TEXT_PRIMARY,
-            panelHeight: 58,
-            editable: false
-          })
-
-          InfoPanel({
-            title: '执行结果',
-            value: this.commandResult,
-            placeholder: '暂无指令执行结果',
-            panelBackgroundColor: THEME_SURFACE_AMBER,
-            panelBorderColor: THEME_BORDER,
-            textColor: THEME_TEXT_SECONDARY,
-            panelHeight: 58,
-            editable: false
-          })
-
-          InfoPanel({
-            title: '助手回复',
-            value: this.feedbackText,
-            placeholder: '暂无反馈',
-            panelBackgroundColor: THEME_SURFACE_GREEN,
-            panelBorderColor: THEME_BORDER,
-            textColor: THEME_TEXT_SECONDARY,
-            panelHeight: 58,
-            editable: false
-          })
+            AssistantConversation({
+              rawTranscriptText: this.rawTranscriptText,
+              recognitionText: this.recognitionText,
+              commandResult: this.commandResult,
+              feedbackText: this.feedbackText,
+              isRecording: this.flowState === AssistantFlowState.RECORDING,
+              currentAudioLevel: this.currentAudioLevel,
+              audioLevels: this.audioLevels
+            })
+          }
+          .width('100%')
+          .layoutWeight(1)
 
           ControlButtons({
             isRecording: this.flowState === AssistantFlowState.RECORDING,
@@ -281,12 +237,10 @@ struct Index {
             stopAction: () => this.stopRecording(),
             openEvaluationAction: () => this.openEvaluationPanel()
           })
-          }
-          .width('100%')
-          .padding({ top: 0, bottom: 24 })
         }
         .width('100%')
         .height('100%')
+        .padding({ top: 12, bottom: 18 })
         .backgroundColor(THEME_PAGE_BACKGROUND)
 
         if (this.isEvaluationPanelVisible) {
@@ -325,21 +279,43 @@ struct Index {
 
   @Builder
   buildHeader() {
-    Column() {
-      Text('智能语音助手')
-        .fontSize(24)
+    Row() {
+      Text('AI')
+        .width(42)
+        .height(42)
+        .fontSize(14)
         .fontWeight(FontWeight.Bold)
-        .fontColor(THEME_TEXT_INVERSE)
+        .fontColor(THEME_ACCENT)
+        .textAlign(TextAlign.Center)
+        .backgroundColor(THEME_SURFACE)
+        .borderRadius(21)
+        .margin({ right: 12 })
 
-      Text('实时语音识别、语义理解、指令执行、文字反馈')
-        .fontSize(13)
-        .fontColor(THEME_TEXT_ON_ACCENT_MUTED)
-        .margin({ top: 5 })
+      Column() {
+        Text('智能语音助手')
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(THEME_TEXT_INVERSE)
+
+        Text('正在待命，可以直接语音交互')
+          .fontSize(13)
+          .fontColor(THEME_TEXT_ON_ACCENT_MUTED)
+          .margin({ top: 5 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Text(getAssistantFlowLabel(this.flowState))
+        .fontSize(12)
+        .fontColor(THEME_TEXT_INVERSE)
+        .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+        .backgroundColor('#FFFFFF22')
+        .borderRadius(8)
     }
     .width(THEME_CARD_WIDTH)
     .padding({ left: 18, right: 18, top: 22, bottom: 18 })
     .margin({ top: 12, bottom: 14 })
-    .alignItems(HorizontalAlign.Start)
+    .alignItems(VerticalAlign.Center)
     .linearGradient({
       direction: GradientDirection.Right,
       colors: [[THEME_ACCENT_DARK, 0], [THEME_ACCENT, 1]]
@@ -351,6 +327,47 @@ struct Index {
       offsetX: 0,
       offsetY: 4
     })
+  }
+
+  @Builder
+  buildAssistantStatus() {
+    Row() {
+      this.buildStatusChip('本次响应', this.assistantResponseTime > 0 ? `${this.assistantResponseTime}ms` : '待统计',
+        this.assistantResponseTime > 0 && this.assistantResponseTime <= 2000 ? THEME_SUCCESS : THEME_TEXT_MUTED)
+      this.buildStatusChip('语义置信', this.semanticConfidence > 0 ? `${this.semanticConfidence}%` : '待识别',
+        this.semanticConfidence >= 70 ? THEME_SUCCESS : THEME_TEXT_MUTED)
+      this.buildStatusChip('英文评测', this.evaluationAccuracy > 0 ? `${this.evaluationAccuracy}%` : '未运行',
+        this.evaluationAccuracy >= 93 ? THEME_SUCCESS : THEME_TEXT_MUTED)
+    }
+    .width(THEME_CARD_WIDTH)
+    .padding({ left: 10, right: 10, top: 8, bottom: 8 })
+    .backgroundColor(THEME_SURFACE)
+    .border({ width: 1, color: THEME_BORDER })
+    .borderRadius(8)
+    .justifyContent(FlexAlign.SpaceBetween)
+    .margin({ bottom: 12 })
+  }
+
+  @Builder
+  buildStatusChip(label: string, value: string, valueColor: string) {
+    Column() {
+      Text(label)
+        .fontSize(10)
+        .fontColor(THEME_TEXT_MUTED)
+
+      Text(value)
+        .fontSize(12)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(valueColor)
+        .margin({ top: 2 })
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+    }
+    .width('31%')
+    .padding({ top: 4, bottom: 4 })
+    .backgroundColor(THEME_SURFACE_MUTED)
+    .borderRadius(7)
+    .alignItems(HorizontalAlign.Center)
   }
 
   @Builder

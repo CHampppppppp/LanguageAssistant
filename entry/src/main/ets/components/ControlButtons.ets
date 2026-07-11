@@ -17,8 +17,8 @@ export struct ControlButtons {
 
   build() {
     Row() {
-      Button(this.isRecording ? '停止录音' : '开始识别')
-        .width('68%')
+      Button(this.isRecording ? '停止' : '点击说话')
+        .width('70%')
         .height(50)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
@@ -35,10 +35,10 @@ export struct ControlButtons {
           }
         })
 
-      Button('评测')
-        .width('28%')
+      Button('英文评测')
+        .width('26%')
         .height(50)
-        .fontSize(15)
+        .fontSize(13)
         .fontWeight(FontWeight.Medium)
         .fontColor(THEME_WARNING)
         .backgroundColor('#FFF7E8')
@@ -52,6 +52,5 @@ export struct ControlButtons {
     }
     .width(THEME_CARD_WIDTH)
     .justifyContent(FlexAlign.SpaceBetween)
-    .margin({ bottom: 16 })
   }
 }

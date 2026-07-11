@@ -1,9 +1,11 @@
 import { IFlytekCw, IFlytekResponse, IFlytekWs } from './IFlytekTypes';
 
 export class IFlytekResponseParser {
-  static parse(data: IFlytekResponse, httpStatus: number): string {
+  static parse(data: IFlytekResponse): string {
     if (data.code !== 0) {
-      throw new Error(`科大讯飞 API 错误（HTTP ${httpStatus}，业务码 ${data.code}）：${this.getErrorMessage(data)}`);
+      throw new Error(
+        `科大讯飞 API 错误（业务码 ${data.code}）：${IFlytekResponseParser.getErrorMessage(data)}`
+      );
     }
 
     let text: string = '';

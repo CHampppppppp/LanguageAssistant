@@ -1,5 +1,5 @@
 export interface IFlytekResponse {
-  code: number;
+  code?: number;
   message?: string;
   desc?: string;
   error?: string;
@@ -7,6 +7,7 @@ export interface IFlytekResponse {
 }
 
 export interface IFlytekData {
+  status?: number;
   result?: IFlytekResult;
 }
 
@@ -25,6 +26,8 @@ export interface IFlytekCw {
 export interface IFlytekRequestData {
   audio: string;
   status: number;
+  format: string;
+  encoding: string;
 }
 
 export interface IFlytekBusiness {
@@ -37,17 +40,10 @@ export interface IFlytekCommon {
   app_id: string;
 }
 
-export interface IFlytekRequestBody {
-  common: IFlytekCommon;
-  business: IFlytekBusiness;
+export interface IFlytekWebSocketRequest {
+  common?: IFlytekCommon;
+  business?: IFlytekBusiness;
   data: IFlytekRequestData;
-}
-
-export interface IFlytekRequestHeader {
-  contentType: string;
-  authorization: string;
-  host: string;
-  date: string;
 }
 
 export function createChineseIFlytekBusiness(): IFlytekBusiness {
