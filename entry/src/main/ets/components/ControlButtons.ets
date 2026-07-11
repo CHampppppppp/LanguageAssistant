@@ -9,27 +9,27 @@ import {
 
 @Component
 export struct ControlButtons {
-  @Prop isRecording: boolean = false;
+  @Prop isConversationActive: boolean = false;
   @Prop isBusy: boolean = false;
   startAction: () => Promise<void> = async () => {};
-  stopAction: () => Promise<void> = async () => {};
+  endConversationAction: () => Promise<void> = async () => {};
   openEvaluationAction: () => void = () => {};
 
   build() {
     Row() {
-      Button(this.isRecording ? '停止' : '点击说话')
+      Button(this.isConversationActive ? '结束对话' : '开始对话')
         .width('70%')
         .height(50)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
         .fontColor(THEME_TEXT_INVERSE)
-        .backgroundColor(this.isRecording ? THEME_DANGER : THEME_ACCENT)
+        .backgroundColor(this.isConversationActive ? THEME_DANGER : THEME_ACCENT)
         .borderRadius(THEME_BUTTON_RADIUS)
-        .opacity(this.isRecording || !this.isBusy ? 1 : 0.52)
-        .enabled(this.isRecording || !this.isBusy)
+        .opacity(this.isConversationActive || !this.isBusy ? 1 : 0.52)
+        .enabled(this.isConversationActive || !this.isBusy)
         .onClick(() => {
-          if (this.isRecording) {
-            this.stopAction();
+          if (this.isConversationActive) {
+            this.endConversationAction();
           } else {
             this.startAction();
           }

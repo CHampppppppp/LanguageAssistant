@@ -42,6 +42,7 @@ struct Index {
   @State audioLevels: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
   @State currentAudioLevel: number = 0;
   @State errorToastText: string = '';
+  @State isConversationActive: boolean = false;
   private errorToastTimer: number = -1;
 
   aboutToAppear(): void {
@@ -54,6 +55,9 @@ struct Index {
     });
     this.viewModel.setFlowStateCallback((state: AssistantFlowState) => {
       this.flowState = state;
+    });
+    this.viewModel.setRecognitionResultCallback((result: RecognitionResult) => {
+      this.applyRecognitionResult(result);
     });
   }
 
@@ -75,11 +79,11 @@ struct Index {
     this.audioLevels = newLevels;
   }
 
-  async startRecognition(): Promise<void> {
+  async startConversation(): Promise<void> {
     this.flowState = AssistantFlowState.RECORDING;
-    this.recognitionText = '正在录音...';
+    this.recognitionText = '正在监听...';
     this.commandResult = '';
-    this.feedbackText = '我正在听。';
+    this.feedbackText = '对话已开始，请直接说话。';
     this.rawTranscriptText = '';
     this.semanticConfidence = 0;
     this.assistantResponseTime = 0;
@@ -87,7 +91,8 @@ struct Index {
     this.audioLevels = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
     try {
-      await this.viewModel.startRecording();
+      await this.viewModel.startConversation();
+      this.isConversationActive = true;
     } catch (error) {
       const errMsg: string = this.formatErrorForUi(error as Error);
       this.flowState = AssistantFlowState.FAILED;
@@ -99,23 +104,18 @@ struct Index {
     }
   }
 
-  async stopRecording(): Promise<void> {
-    this.flowState = AssistantFlowState.RECOGNIZING;
-    this.recognitionText = '';
-    this.rawTranscriptText = '';
-    this.feedbackText = '我正在处理这段语音。';
-
+  async endConversation(): Promise<void> {
     try {
-      const result = await this.viewModel.stopAndProcessRecording();
-      this.applyRecognitionResult(result);
+      await this.viewModel.stopConversation();
+      this.isConversationActive = false;
+      this.feedbackText = '对话已结束。';
+      this.currentAudioLevel = 0;
     } catch (error) {
       const errMsg: string = this.formatErrorForUi(error as Error);
       this.flowState = AssistantFlowState.FAILED;
-      this.recognitionText = '识别失败，请重试';
-      this.rawTranscriptText = '识别失败';
-      this.feedbackText = '识别失败，请重试。';
+      this.feedbackText = '结束对话失败，请重试。';
       this.showErrorToast(errMsg);
-      console.error('语音识别错误:', error);
+      console.error('结束对话错误:', error);
     }
   }
 
@@ -231,10 +231,10 @@ struct Index {
           .layoutWeight(1)
 
           ControlButtons({
-            isRecording: this.flowState === AssistantFlowState.RECORDING,
+            isConversationActive: this.isConversationActive,
             isBusy: isAssistantFlowBusy(this.flowState),
-            startAction: () => this.startRecognition(),
-            stopAction: () => this.stopRecording(),
+            startAction: () => this.startConversation(),
+            endConversationAction: () => this.endConversation(),
             openEvaluationAction: () => this.openEvaluationPanel()
           })
         }

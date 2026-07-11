@@ -57,6 +57,8 @@ export class VoiceAssistantViewModel {
   private performanceMonitor: PerformanceMonitor = new PerformanceMonitor();
   private context: Context | undefined = undefined;
   private flowStateCallback: ((state: AssistantFlowState) => void) | null = null;
+  private recognitionResultCallback: ((result: RecognitionResult) => void) | null = null;
+  private conversationActive: boolean = false;
 
   setAudioLevelCallback(callback: (level: number) => void): void {
     this.speechRecognizer.setAudioLevelCallback(callback);
@@ -64,6 +66,10 @@ export class VoiceAssistantViewModel {
 
   setFlowStateCallback(callback: (state: AssistantFlowState) => void): void {
     this.flowStateCallback = callback;
+  }
+
+  setRecognitionResultCallback(callback: (result: RecognitionResult) => void): void {
+    this.recognitionResultCallback = callback;
   }
 
   setContext(context: Context): void {
@@ -80,6 +86,7 @@ export class VoiceAssistantViewModel {
   destroy(): void {
     this.textFeedback.release();
     this.flowStateCallback = null;
+    this.recognitionResultCallback = null;
     console.info('语音助手 ViewModel 销毁');
   }
 
@@ -101,6 +108,31 @@ export class VoiceAssistantViewModel {
   async startRecording(): Promise<void> {
     await this.speechRecognizer.startRecording();
     this.updateFlowState(AssistantFlowState.RECORDING);
+  }
+
+  async startConversation(): Promise<void> {
+    this.conversationActive = true;
+    try {
+      await this.speechRecognizer.startConversation(async (audioBuffer: ArrayBuffer): Promise<void> => {
+        const result: RecognitionResult = await this.processRecordedAudio(audioBuffer);
+        if (this.recognitionResultCallback) {
+          this.recognitionResultCallback(result);
+        }
+        if (this.conversationActive) {
+          this.updateFlowState(AssistantFlowState.RECORDING);
+        }
+      });
+      this.updateFlowState(AssistantFlowState.RECORDING);
+    } catch (error) {
+      this.conversationActive = false;
+      throw error as Error;
+    }
+  }
+
+  async stopConversation(): Promise<void> {
+    this.conversationActive = false;
+    await this.speechRecognizer.stopConversation();
+    this.updateFlowState(AssistantFlowState.IDLE);
   }
 
   async stopAndProcessRecording(): Promise<RecognitionResult> {

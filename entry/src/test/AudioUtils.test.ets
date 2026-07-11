@@ -1,4 +1,5 @@
 import { describe, it, expect } from '@ohos/hypium';
+import { AudioRecorder } from '../main/ets/core/audio/AudioRecorder';
 import { AudioUtils } from '../main/ets/utils/AudioUtils';
 
 function createWavWithPcm(pcmSamples: Int16Array): ArrayBuffer {
@@ -32,6 +33,17 @@ function writeAscii(view: DataView, offset: number, text: string): void {
   }
 }
 
+function createPcmBuffer(samples: number[]): ArrayBuffer {
+  const buffer: ArrayBuffer = new ArrayBuffer(samples.length * 2);
+  const view: Int16Array = new Int16Array(buffer);
+
+  for (let index: number = 0; index < samples.length; index++) {
+    view[index] = samples[index];
+  }
+
+  return buffer;
+}
+
 export default function audioUtilsTest() {
   describe('audioUtilsTest', () => {
     it('extracts pcm data from wav file', 0, () => {
@@ -52,6 +64,17 @@ export default function audioUtilsTest() {
       expect(normalized[0]).assertEqual(0.25);
       expect(normalized[1]).assertEqual(-0.5);
       expect(normalized[2]).assertEqual(1);
+    });
+
+    it('maps PCM16 RMS volume to a speech-friendly display range', 0, () => {
+      const silenceLevel: number = AudioRecorder.calculateAudioLevel(new ArrayBuffer(0));
+      const normalSpeechLevel: number = AudioRecorder.calculateAudioLevel(createPcmBuffer([1000, -1000, 1000, -1000]));
+      const loudLevel: number = AudioRecorder.calculateAudioLevel(createPcmBuffer([30000, -30000, 30000, -30000]));
+
+      expect(silenceLevel).assertEqual(0);
+      expect(normalSpeechLevel > 50).assertTrue();
+      expect(normalSpeechLevel < 70).assertTrue();
+      expect(loudLevel).assertEqual(100);
     });
 
     it('rejects invalid wav data', 0, () => {

@@ -24,6 +24,17 @@ export class SpeechRecognizer {
     this.audioRecorder.setAudioLevelCallback(callback);
   }
 
+  async startConversation(onUtteranceCompleted: (audioBuffer: ArrayBuffer) => Promise<void>): Promise<void> {
+    this.lastErrorMessage = '';
+    await this.audioRecorder.startConversation(onUtteranceCompleted);
+    console.info('语音对话已开始');
+  }
+
+  async stopConversation(): Promise<void> {
+    await this.audioRecorder.stopConversation();
+    console.info('语音对话已结束');
+  }
+
   async startRecording(): Promise<void> {
     this.lastErrorMessage = '';
     await this.audioRecorder.startRecording();

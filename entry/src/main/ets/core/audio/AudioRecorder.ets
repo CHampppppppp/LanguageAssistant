@@ -1,12 +1,16 @@
 import { audio } from '@kit.AudioKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { RecordingState } from './RecordingState';
+import { VoiceActivityDetector } from './VoiceActivityDetector';
 
 const SAMPLE_RATE_16K: audio.AudioSamplingRate = audio.AudioSamplingRate.SAMPLE_RATE_16000;
 const MONO_CHANNEL: audio.AudioChannel = audio.AudioChannel.CHANNEL_1;
 const PCM_16BIT: audio.AudioSampleFormat = audio.AudioSampleFormat.SAMPLE_FORMAT_S16LE;
 const RAW_ENCODING: audio.AudioEncodingType = audio.AudioEncodingType.ENCODING_TYPE_RAW;
 const READ_BUFFER_SIZE: number = 4096;
+const PCM16_FULL_SCALE: number = 32768;
+const MIN_DISPLAY_DBFS: number = -60;
+const MAX_DISPLAY_DBFS: number = -6;
 
 export class AudioRecorder {
   private audioCapturer: audio.AudioCapturer | null = null;
@@ -16,6 +20,9 @@ export class AudioRecorder {
   private totalBytes: number = 0;
   private isReading: boolean = false;
   private readLoopPromise: Promise<void> | null = null;
+  private conversationActive: boolean = false;
+  private onUtteranceCompleted: ((audioBuffer: ArrayBuffer) => Promise<void>) | null = null;
+  private voiceActivityDetector: VoiceActivityDetector = new VoiceActivityDetector();
 
   setAudioLevelCallback(callback: (level: number) => void): void {
     this.onAudioLevelChanged = callback;
@@ -56,7 +63,7 @@ export class AudioRecorder {
   }
 
   async stopRecording(): Promise<ArrayBuffer> {
-    if (!this.audioCapturer || this.state !== RecordingState.RECORDING) {
+    if (!this.audioCapturer || (this.state !== RecordingState.RECORDING && this.state !== RecordingState.RECOGNIZING)) {
       throw new Error('当前没有正在进行的录音');
     }
 
@@ -102,6 +109,31 @@ export class AudioRecorder {
     this.state = RecordingState.IDLE;
   }
 
+  async startConversation(onUtteranceCompleted: (audioBuffer: ArrayBuffer) => Promise<void>): Promise<void> {
+    this.conversationActive = true;
+    this.onUtteranceCompleted = onUtteranceCompleted;
+    this.voiceActivityDetector.reset();
+    try {
+      await this.startRecording();
+    } catch (error) {
+      this.conversationActive = false;
+      this.onUtteranceCompleted = null;
+      throw error as Error;
+    }
+  }
+
+  async stopConversation(): Promise<void> {
+    this.conversationActive = false;
+    this.onUtteranceCompleted = null;
+    this.voiceActivityDetector.reset();
+    if (this.audioCapturer && this.isReading) {
+      await this.stopRecording();
+      return;
+    }
+    this.state = RecordingState.IDLE;
+    this.emitAudioLevel(new ArrayBuffer(0));
+  }
+
   private startReadLoop(capturer: audio.AudioCapturer): void {
     this.isReading = true;
     this.readLoopPromise = this.readAudioLoop(capturer);
@@ -112,9 +144,17 @@ export class AudioRecorder {
       try {
         const readResult: ArrayBuffer = await capturer.read(READ_BUFFER_SIZE, true);
         if (readResult.byteLength > 0 && this.isReading) {
-          this.chunks.push(readResult);
-          this.totalBytes += readResult.byteLength;
           this.emitAudioLevel(readResult);
+          if (this.conversationActive) {
+            const level: number = AudioRecorder.calculateAudioLevel(readResult);
+            const utterance: ArrayBuffer | null = this.voiceActivityDetector.push(readResult, level);
+            if (utterance) {
+              await this.handleCompletedUtterance(utterance);
+            }
+          } else {
+            this.chunks.push(readResult);
+            this.totalBytes += readResult.byteLength;
+          }
         }
       } catch (error) {
         if (this.isReading) {
@@ -149,16 +189,46 @@ export class AudioRecorder {
       return;
     }
 
-    const int16Array: Int16Array = new Int16Array(buffer);
-    let sum: number = 0;
+    this.onAudioLevelChanged(AudioRecorder.calculateAudioLevel(buffer));
+  }
 
-    for (let i: number = 0; i < int16Array.length; i++) {
-      sum += Math.abs(int16Array[i]);
+  static calculateAudioLevel(buffer: ArrayBuffer): number {
+    const int16Array: Int16Array = new Int16Array(buffer);
+    if (int16Array.length === 0) {
+      return 0;
     }
 
-    const average: number = int16Array.length > 0 ? sum / int16Array.length : 0;
-    const normalizedLevel: number = Math.min((average / 32768) * 100, 100);
-    this.onAudioLevelChanged(normalizedLevel);
+    let sumOfSquares: number = 0;
+
+    for (let i: number = 0; i < int16Array.length; i++) {
+      const sample: number = int16Array[i];
+      sumOfSquares += sample * sample;
+    }
+
+    const rms: number = Math.sqrt(sumOfSquares / int16Array.length);
+    if (rms === 0) {
+      return 0;
+    }
+
+    const dbfs: number = 20 * Math.log10(rms / PCM16_FULL_SCALE);
+    const displayLevel: number = ((dbfs - MIN_DISPLAY_DBFS) / (MAX_DISPLAY_DBFS - MIN_DISPLAY_DBFS)) * 100;
+    return Math.min(Math.max(displayLevel, 0), 100);
+  }
+
+  private async handleCompletedUtterance(utterance: ArrayBuffer): Promise<void> {
+    if (!this.onUtteranceCompleted || !this.conversationActive) {
+      return;
+    }
+    this.state = RecordingState.RECOGNIZING;
+    try {
+      await this.onUtteranceCompleted(utterance);
+    } catch (error) {
+      console.error('[AudioRecorder] 处理语音话轮失败', error);
+    } finally {
+      if (this.conversationActive && this.isReading) {
+        this.state = RecordingState.RECORDING;
+      }
+    }
   }
 
   private async handleFailure(error: BusinessError, prefix: string): Promise<never> {
