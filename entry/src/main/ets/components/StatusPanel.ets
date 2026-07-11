@@ -1,3 +1,16 @@
+import {
+  THEME_ACCENT,
+  THEME_BORDER,
+  THEME_CARD_RADIUS,
+  THEME_CARD_WIDTH,
+  THEME_DANGER,
+  THEME_SUCCESS,
+  THEME_SURFACE,
+  THEME_SHADOW_STRONG,
+  THEME_TEXT_MUTED,
+  THEME_TEXT_PRIMARY
+} from './AssistantTheme';
+
 @Component
 export struct StatusPanel {
   @Prop datasetInfo: string = '';
@@ -7,53 +20,54 @@ export struct StatusPanel {
 
   build() {
     Row() {
-      this.buildStatusItem('S', '流程状态', this.flowStateLabel || '待命', '#2563EB')
+      this.buildStatusItem('S', '流程状态', this.flowStateLabel || '待命', THEME_ACCENT)
 
       Divider()
         .vertical(true)
-        .height(40)
-        .color('#E0E0E0')
+        .height(38)
+        .color(THEME_BORDER)
         .strokeWidth(1)
 
-      this.buildStatusItem('D', '数据集', this.datasetInfo, '#4CAF50')
+      this.buildStatusItem('D', '数据集', this.datasetInfo, THEME_SUCCESS)
 
       Divider()
         .vertical(true)
-        .height(40)
-        .color('#E0E0E0')
+        .height(38)
+        .color(THEME_BORDER)
         .strokeWidth(1)
 
       this.buildStatusItem(
         'A',
         '评测词准确率',
         this.evaluationAccuracy > 0 ? `${this.evaluationAccuracy}%` : '未评测',
-        this.evaluationAccuracy >= 93 ? '#4CAF50' : '#FF5722'
+        this.evaluationAccuracy >= 93 ? THEME_SUCCESS : THEME_DANGER
       )
 
       Divider()
         .vertical(true)
-        .height(40)
-        .color('#E0E0E0')
+        .height(38)
+        .color(THEME_BORDER)
         .strokeWidth(1)
 
       this.buildStatusItem(
         'T',
         '响应时间',
         this.responseTime > 0 ? `${this.responseTime}ms` : '未统计',
-        this.responseTime > 0 && this.responseTime <= 2000 ? '#4CAF50' : '#FF5722'
+        this.responseTime > 0 && this.responseTime <= 2000 ? THEME_SUCCESS : THEME_DANGER
       )
     }
-    .width('90%')
-    .height(84)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .margin({ top: 20, bottom: 15 })
+    .width(THEME_CARD_WIDTH)
+    .height(82)
+    .backgroundColor(THEME_SURFACE)
+    .borderRadius(THEME_CARD_RADIUS)
+    .border({ width: 1, color: THEME_BORDER })
+    .margin({ bottom: 12 })
     .justifyContent(FlexAlign.SpaceEvenly)
     .shadow({
-      radius: 8,
-      color: '#00000010',
+      radius: 10,
+      color: THEME_SHADOW_STRONG,
       offsetX: 0,
-      offsetY: 2
+      offsetY: 3
     })
   }
 
@@ -61,19 +75,19 @@ export struct StatusPanel {
   buildStatusItem(icon: string, label: string, value: string, color: string) {
     Column() {
       Text(icon)
-        .fontSize(14)
+        .fontSize(13)
         .fontWeight(FontWeight.Bold)
         .fontColor(color)
 
       Text(label)
         .fontSize(10)
-        .fontColor('#8A8F98')
+        .fontColor(THEME_TEXT_MUTED)
         .margin({ top: 4 })
 
       Text(value)
         .fontSize(12)
         .fontWeight(FontWeight.Bold)
-        .fontColor(color)
+        .fontColor(THEME_TEXT_PRIMARY)
         .margin({ top: 2 })
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })

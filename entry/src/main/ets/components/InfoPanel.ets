@@ -1,11 +1,22 @@
+import {
+  THEME_BORDER,
+  THEME_CARD_RADIUS,
+  THEME_CARD_WIDTH,
+  THEME_TEXT_SECONDARY,
+  THEME_FIELD_RADIUS,
+  THEME_SHADOW,
+  THEME_SURFACE,
+  THEME_TEXT_PRIMARY
+} from './AssistantTheme';
+
 @Component
 export struct InfoPanel {
   @Prop title: string = '';
   @Prop value: string = '';
   @Prop placeholder: string = '';
-  @Prop panelBackgroundColor: string = '#FFFFFF';
-  @Prop panelBorderColor: string = '#E8E8E8';
-  @Prop textColor: string = '#333333';
+  @Prop panelBackgroundColor: string = THEME_SURFACE;
+  @Prop panelBorderColor: string = THEME_BORDER;
+  @Prop textColor: string = THEME_TEXT_SECONDARY;
   @Prop panelHeight: number = 60;
   @Prop editable: boolean = false;
 
@@ -13,12 +24,12 @@ export struct InfoPanel {
     Column() {
       Row() {
         Text(this.title)
-          .fontSize(16)
+          .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .fontColor('#1A1A2E')
+          .fontColor(THEME_TEXT_PRIMARY)
       }
       .width('100%')
-      .margin({ bottom: 12 })
+      .margin({ bottom: 10 })
 
       if (this.editable) {
         TextArea({ text: this.value, placeholder: this.placeholder })
@@ -26,7 +37,7 @@ export struct InfoPanel {
           .height(this.panelHeight)
           .padding(12)
           .backgroundColor(this.panelBackgroundColor)
-          .borderRadius(10)
+          .borderRadius(THEME_FIELD_RADIUS)
           .border({ width: 1, color: this.panelBorderColor })
           .fontSize(15)
           .fontColor(this.textColor)
@@ -37,24 +48,25 @@ export struct InfoPanel {
           .fontColor(this.textColor)
           .width('100%')
           .height(this.panelHeight)
-          .padding(14)
+          .padding(12)
           .backgroundColor(this.panelBackgroundColor)
-          .borderRadius(10)
+          .borderRadius(THEME_FIELD_RADIUS)
           .border({ width: 1, color: this.panelBorderColor })
           .textAlign(TextAlign.Start)
           .lineHeight(22)
       }
     }
-    .width('90%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .margin({ bottom: 15 })
+    .width(THEME_CARD_WIDTH)
+    .padding(14)
+    .backgroundColor(THEME_SURFACE)
+    .borderRadius(THEME_CARD_RADIUS)
+    .border({ width: 1, color: THEME_BORDER })
+    .margin({ bottom: 12 })
     .shadow({
-      radius: 8,
-      color: '#00000010',
+      radius: 10,
+      color: THEME_SHADOW,
       offsetX: 0,
-      offsetY: 2
+      offsetY: 3
     })
   }
 }

@@ -1,3 +1,12 @@
+import {
+  THEME_ACCENT,
+  THEME_BUTTON_RADIUS,
+  THEME_CARD_WIDTH,
+  THEME_DANGER,
+  THEME_TEXT_INVERSE,
+  THEME_WARNING
+} from './AssistantTheme';
+
 @Component
 export struct ControlButtons {
   @Prop isRecording: boolean = false;
@@ -10,11 +19,13 @@ export struct ControlButtons {
     Row() {
       Button(this.isRecording ? '停止录音' : '开始识别')
         .width('45%')
-        .height(52)
+        .height(50)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .backgroundColor(this.isRecording ? '#D64545' : '#2563EB')
-        .borderRadius(12)
+        .fontColor(THEME_TEXT_INVERSE)
+        .backgroundColor(this.isRecording ? THEME_DANGER : THEME_ACCENT)
+        .borderRadius(THEME_BUTTON_RADIUS)
+        .opacity(this.isRecording || !this.isBusy ? 1 : 0.52)
         .enabled(this.isRecording || !this.isBusy)
         .onClick(() => {
           if (this.isRecording) {
@@ -26,18 +37,20 @@ export struct ControlButtons {
 
       Button('英文评测')
         .width('45%')
-        .height(52)
+        .height(50)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .backgroundColor('#F97316')
-        .borderRadius(12)
+        .fontColor(THEME_TEXT_INVERSE)
+        .backgroundColor(THEME_WARNING)
+        .borderRadius(THEME_BUTTON_RADIUS)
+        .opacity(!this.isBusy ? 1 : 0.52)
         .enabled(!this.isBusy)
         .onClick(() => {
           this.evaluateAction();
         })
     }
-    .width('90%')
+    .width(THEME_CARD_WIDTH)
     .justifyContent(FlexAlign.SpaceBetween)
-    .margin({ bottom: 20 })
+    .margin({ bottom: 16 })
   }
 }
