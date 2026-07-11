@@ -39,11 +39,16 @@ export default function audioUtilsTest() {
 
       const pcmBuffer: ArrayBuffer = AudioUtils.extractWavPcmData(wavBuffer);
       const pcmView: Int16Array = new Int16Array(pcmBuffer);
+      const formatInfo = AudioUtils.parseWavFormatInfo(wavBuffer);
 
       expect(pcmView.length).assertEqual(3);
       expect(pcmView[0]).assertEqual(1000);
       expect(pcmView[1]).assertEqual(-1000);
       expect(pcmView[2]).assertEqual(2000);
+      expect(formatInfo.sampleRate).assertEqual(16000);
+      expect(formatInfo.channelCount).assertEqual(1);
+      expect(formatInfo.bitsPerSample).assertEqual(16);
+      expect(formatInfo.isPcm16Mono16k).assertTrue();
     });
 
     it('normalizes audio to the largest absolute amplitude', 0, () => {
@@ -64,6 +69,22 @@ export default function audioUtilsTest() {
       }
 
       expect(errorMessage).assertContain('WAV 文件太小');
+    });
+
+    it('rejects wav files that do not meet evaluation format requirements', 0, () => {
+      const wavBuffer: ArrayBuffer = createWavWithPcm(new Int16Array([1, 2]));
+      const view: DataView = new DataView(wavBuffer);
+      view.setUint16(22, 2, true);
+
+      let errorMessage: string = '';
+
+      try {
+        AudioUtils.validateEvaluationWavFormat(AudioUtils.parseWavFormatInfo(wavBuffer));
+      } catch (error) {
+        errorMessage = (error as Error).message;
+      }
+
+      expect(errorMessage).assertContain('单声道');
     });
   });
 }

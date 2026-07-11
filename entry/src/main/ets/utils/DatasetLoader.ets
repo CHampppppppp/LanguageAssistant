@@ -1,10 +1,14 @@
-import { AudioUtils } from './AudioUtils';
+import { AudioUtils, WavFormatInfo } from './AudioUtils';
 import fs from '@ohos.file.fs';
 import { util } from '@kit.ArkTS';
+
+export type DatasetAudioFormat = 'wav' | 'flac';
 
 export interface DatasetSample {
   sampleId: string;
   audioPath: string;
+  audioFormat: DatasetAudioFormat;
+  audioPreparation: string;
   transcript: string;
   speakerId: string;
   chapterId: string;
@@ -18,10 +22,17 @@ export interface DatasetLoadSummary {
   skippedWithoutTranscriptCount: number;
   hasFlacSamples: boolean;
   hasWavSamples: boolean;
+  wavPreferredSampleCount: number;
+  flacOnlySampleCount: number;
+  selectedAudioFormat: string;
+  audioPreparationPolicy: string;
   loadDurationMs: number;
 }
 
 const WINDOWS_PATH_SEPARATOR_PATTERN: RegExp = new RegExp('\\\\', 'g');
+const WAV_EVALUATION_POLICY: string = '优先使用预先转换的16k/mono/PCM WAV；仅有FLAC的样本不纳入可信评测';
+const WAV_PREPARED_AUDIO_PREPARATION: string = 'preconverted_16k_mono_pcm_wav';
+const FLAC_ONLY_AUDIO_PREPARATION: string = 'raw_flac_requires_offline_conversion';
 
 export class DatasetLoader {
   private datasetPath: string = '';
@@ -36,6 +47,10 @@ export class DatasetLoader {
     skippedWithoutTranscriptCount: 0,
     hasFlacSamples: false,
     hasWavSamples: false,
+    wavPreferredSampleCount: 0,
+    flacOnlySampleCount: 0,
+    selectedAudioFormat: 'wav_only',
+    audioPreparationPolicy: WAV_EVALUATION_POLICY,
     loadDurationMs: 0
   };
 
@@ -60,6 +75,10 @@ export class DatasetLoader {
       skippedWithoutTranscriptCount: 0,
       hasFlacSamples: false,
       hasWavSamples: false,
+      wavPreferredSampleCount: 0,
+      flacOnlySampleCount: 0,
+      selectedAudioFormat: 'wav_only',
+      audioPreparationPolicy: WAV_EVALUATION_POLICY,
       loadDurationMs: 0
     };
 
@@ -220,6 +239,8 @@ export class DatasetLoader {
     const audioFiles: string[] = (await this.findAudioFiles()).sort((left: string, right: string) => left.localeCompare(right));
     console.info(`[DatasetLoader] 找到 ${audioFiles.length} 个音频文件`);
     let skippedWithoutTranscript: number = 0;
+    let wavPreferredSampleCount: number = 0;
+    let flacOnlySampleCount: number = 0;
     this.lastLoadSummary.audioFileCount = audioFiles.length;
     this.lastLoadSummary.hasFlacSamples = audioFiles.some((audioPath: string) => audioPath.endsWith('.flac'));
     this.lastLoadSummary.hasWavSamples = audioFiles.some((audioPath: string) => audioPath.endsWith('.wav'));
@@ -228,22 +249,36 @@ export class DatasetLoader {
       console.info(`[DatasetLoader] 第一个音频文件：${audioFiles[0]}`);
     }
 
-    for (const audioPath of audioFiles) {
-      const sample: DatasetSample | null = this.parseAudioPath(audioPath);
-      if (sample) {
-        if (!sample.transcript) {
-          skippedWithoutTranscript++;
-          console.warn(`[DatasetLoader] 跳过缺少转录文本的样本：${sample.sampleId}`);
-          continue;
-        }
+    const selectedSamples: DatasetSample[] = this.selectPreferredEvaluationSamples(audioFiles);
+
+    for (const sample of selectedSamples) {
+      if (!sample.transcript) {
+        skippedWithoutTranscript++;
+        console.warn(`[DatasetLoader] 跳过缺少转录文本的样本：${sample.sampleId}`);
+        continue;
+      }
+
+      if (sample.audioFormat === 'wav') {
+        wavPreferredSampleCount++;
         this.samples.push(sample);
+      } else {
+        flacOnlySampleCount++;
+        console.warn(`[DatasetLoader] 跳过仅有 FLAC 的样本：${sample.sampleId}`);
       }
     }
 
     if (skippedWithoutTranscript > 0) {
       console.warn(`[DatasetLoader] 共跳过 ${skippedWithoutTranscript} 个缺少转录文本的样本`);
     }
+    if (flacOnlySampleCount > 0) {
+      console.warn(`[DatasetLoader] 共跳过 ${flacOnlySampleCount} 个仅有 FLAC 的样本，需先离线转为 16k/mono/PCM WAV`);
+    }
+    this.lastLoadSummary.selectedAudioFormat = wavPreferredSampleCount > 0
+      ? (flacOnlySampleCount > 0 ? 'wav_preferred_flac_skipped' : 'wav_only')
+      : (flacOnlySampleCount > 0 ? 'flac_only_unavailable' : 'none');
     this.lastLoadSummary.skippedWithoutTranscriptCount = skippedWithoutTranscript;
+    this.lastLoadSummary.wavPreferredSampleCount = wavPreferredSampleCount;
+    this.lastLoadSummary.flacOnlySampleCount = flacOnlySampleCount;
   }
 
   private async findAudioFiles(): Promise<string[]> {
@@ -314,9 +349,35 @@ export class DatasetLoader {
     }
   }
 
+  private selectPreferredEvaluationSamples(audioFiles: string[]): DatasetSample[] {
+    const sampleMap: Map<string, DatasetSample> = new Map();
+
+    for (const audioPath of audioFiles) {
+      const sample: DatasetSample | null = this.parseAudioPath(audioPath);
+      if (!sample) {
+        continue;
+      }
+
+      const existingSample: DatasetSample | undefined = sampleMap.get(sample.sampleId);
+      if (!existingSample) {
+        sampleMap.set(sample.sampleId, sample);
+        continue;
+      }
+
+      if (existingSample.audioFormat === 'flac' && sample.audioFormat === 'wav') {
+        sampleMap.set(sample.sampleId, sample);
+      }
+    }
+
+    return Array.from(sampleMap.values()).sort((left: DatasetSample, right: DatasetSample) => {
+      return left.sampleId.localeCompare(right.sampleId);
+    });
+  }
+
   private parseAudioPath(audioPath: string): DatasetSample | null {
     const normalizedPath: string = audioPath.replace(WINDOWS_PATH_SEPARATOR_PATTERN, '/');
     const fileName: string = normalizedPath.split('/').pop() || '';
+    const audioFormat: DatasetAudioFormat = normalizedPath.endsWith('.wav') ? 'wav' : 'flac';
     const parts: string[] = fileName.replace('.flac', '').replace('.wav', '').split('-');
 
     if (parts.length >= 3) {
@@ -330,6 +391,8 @@ export class DatasetLoader {
       return {
         sampleId,
         audioPath: normalizedPath,
+        audioFormat,
+        audioPreparation: audioFormat === 'wav' ? WAV_PREPARED_AUDIO_PREPARATION : FLAC_ONLY_AUDIO_PREPARATION,
         transcript,
         speakerId,
         chapterId,
@@ -384,6 +447,10 @@ export class DatasetLoader {
       skippedWithoutTranscriptCount: this.lastLoadSummary.skippedWithoutTranscriptCount,
       hasFlacSamples: this.lastLoadSummary.hasFlacSamples,
       hasWavSamples: this.lastLoadSummary.hasWavSamples,
+      wavPreferredSampleCount: this.lastLoadSummary.wavPreferredSampleCount,
+      flacOnlySampleCount: this.lastLoadSummary.flacOnlySampleCount,
+      selectedAudioFormat: this.lastLoadSummary.selectedAudioFormat,
+      audioPreparationPolicy: this.lastLoadSummary.audioPreparationPolicy,
       loadDurationMs: this.lastLoadSummary.loadDurationMs
     };
   }
@@ -410,11 +477,15 @@ export class DatasetLoader {
   async loadAudioData(sample: DatasetSample): Promise<Float32Array> {
     try {
       let audioBuffer: ArrayBuffer;
-      if (sample.audioPath.endsWith('.flac')) {
-        audioBuffer = await AudioUtils.convertFlacToWav(sample.audioPath, this.context, this.isRawfile);
-      } else {
-        audioBuffer = await AudioUtils.readWavFile(sample.audioPath, this.context, this.isRawfile);
+      if (sample.audioFormat === 'flac') {
+        throw new Error('当前评测样本仍为 FLAC，请先离线转换为 16k/mono/PCM WAV');
       }
+      const wavResult: { pcmData: ArrayBuffer; formatInfo: WavFormatInfo } = await AudioUtils.readEvaluationWavFile(
+        sample.audioPath,
+        this.context,
+        this.isRawfile
+      );
+      audioBuffer = wavResult.pcmData;
       const audioData: Float32Array = this.bufferToFloat32Array(audioBuffer);
       return AudioUtils.normalizeAudio(audioData);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { SpeechRecognizer } from '../core/SpeechRecognizer';
+import { RecognitionFailureKind, RecognitionProfileInfo, SpeechRecognizer } from '../core/SpeechRecognizer';
 import { SemanticUnderstanding } from '../core/SemanticUnderstanding';
 import { VoiceCommand } from '../model/VoiceCommand';
 import { DatasetLoader } from '../utils/DatasetLoader';
@@ -11,6 +11,7 @@ import { createEnglishIFlytekBusiness } from '../core/asr/IFlytekTypes';
 import { LibriSpeechEvaluator } from '../core/evaluation/LibriSpeechEvaluator';
 import { EvaluationDetail, EvaluationSummary } from '../core/evaluation/EvaluationTypes';
 import { AssistantFlowState } from './AssistantFlowState';
+import { RecordingDiagnostics } from '../core/audio/AudioRecorder';
 
 export interface RecognitionResult {
   recognizedText: string;
@@ -18,6 +19,10 @@ export interface RecognitionResult {
   feedback: string;
   semanticConfidence: number;
   responseTime: number;
+  failureKind: RecognitionFailureKind;
+  errorDetail: string;
+  recognitionProfile: RecognitionProfileInfo;
+  recordingDiagnostics: RecordingDiagnostics;
 }
 
 export interface TestResult {
@@ -25,6 +30,10 @@ export interface TestResult {
   sampleCount: number;
   evaluatedCount: number;
   avgResponseTime: number;
+  successRate: number;
+  accuracyTargetMet: boolean;
+  responseTimeTargetMet: boolean;
+  reportText: string;
   details: TestDetail[];
 }
 
@@ -35,7 +44,12 @@ export interface TestDetail {
   wordAccuracy: number;
   wordErrorRate: number;
   responseTime: number;
+  meetsAccuracyTarget: boolean;
+  meetsResponseTimeTarget: boolean;
   success: boolean;
+  audioFormat: string;
+  audioPreparation: string;
+  failureCategory: string;
   reason: string;
 }
 
@@ -48,6 +62,18 @@ export class VoiceAssistantViewModel {
   private performanceMonitor: PerformanceMonitor = new PerformanceMonitor();
   private context: Context | undefined = undefined;
   private flowStateCallback: ((state: AssistantFlowState) => void) | null = null;
+
+  private createDefaultRecordingDiagnostics(): RecordingDiagnostics {
+    return {
+      durationMs: 0,
+      capturedBytes: 0,
+      chunkCount: 0,
+      readCount: 0,
+      isEmptyAudio: true,
+      finalState: this.speechRecognizer.getRecordingState(),
+      errorMessage: ''
+    };
+  }
 
   setAudioLevelCallback(callback: (level: number) => void): void {
     this.speechRecognizer.setAudioLevelCallback(callback);
@@ -84,7 +110,7 @@ export class VoiceAssistantViewModel {
       const audioBuffer: ArrayBuffer = await this.speechRecognizer.stopRecording();
       return await this.processRecordedAudio(audioBuffer);
     } catch (error) {
-      return this.createFailedRecognitionResult(`错误: ${(error as Error).message}`, '处理失败');
+      return this.createFailedRecognitionResult(`错误: ${(error as Error).message}`, '处理失败', 'unknown', String((error as Error).message));
     }
   }
 
@@ -98,7 +124,8 @@ export class VoiceAssistantViewModel {
       const audioBuffer: ArrayBuffer = await this.speechRecognizer.stopRecording();
       return await this.processRecordedAudio(audioBuffer);
     } catch (error) {
-      return this.createFailedRecognitionResult(`错误: ${error.message}`, '处理失败');
+      const errorMessage: string = (error as Error).message || String(error);
+      return this.createFailedRecognitionResult(`错误: ${errorMessage}`, '处理失败', 'unknown', errorMessage);
     }
   }
 
@@ -106,14 +133,27 @@ export class VoiceAssistantViewModel {
     this.updateFlowState(AssistantFlowState.EVALUATING);
     if (!this.datasetLoader) {
       this.updateFlowState(AssistantFlowState.FAILED);
-      return { wordAccuracy: 0, sampleCount: 0, evaluatedCount: 0, avgResponseTime: 0, details: [] };
+      return {
+        wordAccuracy: 0,
+        sampleCount: 0,
+        evaluatedCount: 0,
+        avgResponseTime: 0,
+        successRate: 0,
+        accuracyTargetMet: false,
+        responseTimeTargetMet: false,
+        reportText: '',
+        details: []
+      };
     }
 
     try {
       const evaluator: LibriSpeechEvaluator = new LibriSpeechEvaluator(
         this.datasetLoader,
         new IFlytekAsrService(createEnglishIFlytekBusiness()),
-        10
+        {
+          maxSamples: 50,
+          recognizerProfile: 'english_librispeech_eval'
+        }
       );
       const summary: EvaluationSummary = await evaluator.evaluate();
       this.updateFlowState(AssistantFlowState.COMPLETED);
@@ -123,6 +163,10 @@ export class VoiceAssistantViewModel {
         sampleCount: summary.totalSampleCount,
         evaluatedCount: summary.evaluatedCount,
         avgResponseTime: Number(summary.averageResponseTime.toFixed(0)),
+        successRate: Number((summary.successRate * 100).toFixed(2)),
+        accuracyTargetMet: summary.accuracyTargetMet,
+        responseTimeTargetMet: summary.responseTimeTargetMet,
+        reportText: summary.reportText,
         details: this.mapEvaluationDetails(summary.details)
       };
     } catch (error) {
@@ -136,13 +180,16 @@ export class VoiceAssistantViewModel {
     const startTime: number = Date.now();
 
     if (audioBuffer.byteLength === 0) {
-      return this.createFailedRecognitionResult('未检测到音频数据', '请检查麦克风权限');
+      return this.createFailedRecognitionResult('未检测到音频数据', '请检查麦克风权限', 'empty_audio', '录音数据为空');
     }
 
     this.updateFlowState(AssistantFlowState.RECOGNIZING);
     const recognizedText: string = await this.speechRecognizer.recognize(audioBuffer);
     if (!recognizedText) {
-      return this.createFailedRecognitionResult('识别失败，未返回文字', '请重试');
+      const failureKind: RecognitionFailureKind = this.speechRecognizer.getLastFailureKind();
+      const errorDetail: string = this.speechRecognizer.getLastErrorMessage() || '识别失败，未返回文字';
+      const feedback: string = failureKind === 'api_or_network' ? '请检查网络或接口配置后重试' : '请重试';
+      return this.createFailedRecognitionResult('识别失败，未返回文字', feedback, failureKind, errorDetail);
     }
 
     const command: VoiceCommand = this.semanticUnderstanding.understand(recognizedText);
@@ -159,18 +206,31 @@ export class VoiceAssistantViewModel {
       commandResult: executionResult.message,
       feedback,
       semanticConfidence: this.toPercent(command.confidence),
-      responseTime
+      responseTime,
+      failureKind: 'none',
+      errorDetail: '',
+      recognitionProfile: this.speechRecognizer.getRecognitionProfileInfo(),
+      recordingDiagnostics: this.speechRecognizer.getLastRecordingDiagnostics()
     };
   }
 
-  private createFailedRecognitionResult(recognizedText: string, feedback: string): RecognitionResult {
+  private createFailedRecognitionResult(
+    recognizedText: string,
+    feedback: string,
+    failureKind: RecognitionFailureKind,
+    errorDetail: string
+  ): RecognitionResult {
     this.updateFlowState(AssistantFlowState.FAILED);
     return {
       recognizedText,
       commandResult: '',
       feedback,
       semanticConfidence: 0,
-      responseTime: 0
+      responseTime: 0,
+      failureKind,
+      errorDetail,
+      recognitionProfile: this.speechRecognizer.getRecognitionProfileInfo(),
+      recordingDiagnostics: this.speechRecognizer.getLastRecordingDiagnostics() || this.createDefaultRecordingDiagnostics()
     };
   }
 
@@ -183,7 +243,12 @@ export class VoiceAssistantViewModel {
         wordAccuracy: detail.wordAccuracy,
         wordErrorRate: detail.wordErrorRate,
         responseTime: detail.responseTime,
+        meetsAccuracyTarget: detail.meetsAccuracyTarget,
+        meetsResponseTimeTarget: detail.meetsResponseTimeTarget,
         success: detail.success,
+        audioFormat: detail.audioFormat,
+        audioPreparation: detail.audioPreparation,
+        failureCategory: detail.failureCategory,
         reason: detail.reason
       };
     });

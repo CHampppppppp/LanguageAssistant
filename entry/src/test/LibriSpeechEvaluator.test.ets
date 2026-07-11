@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { LibriSpeechEvaluator } from '../main/ets/core/evaluation/LibriSpeechEvaluator';
-import { DatasetLoader, DatasetSample } from '../main/ets/utils/DatasetLoader';
+import { DatasetLoader, DatasetLoadSummary, DatasetSample } from '../main/ets/utils/DatasetLoader';
 import { AsrService } from '../main/ets/core/asr/AsrService';
 
 class FakeDatasetLoader extends DatasetLoader {
@@ -19,6 +19,22 @@ class FakeDatasetLoader extends DatasetLoader {
 
   async loadAudioData(sample: DatasetSample): Promise<Float32Array> {
     return this.audioDataBySampleId.get(sample.sampleId) || new Float32Array(0);
+  }
+
+  getLastLoadSummary(): DatasetLoadSummary {
+    return {
+      transcriptCount: this.samplesToReturn.length,
+      audioFileCount: this.samplesToReturn.length,
+      matchedSampleCount: this.samplesToReturn.length,
+      skippedWithoutTranscriptCount: 0,
+      hasFlacSamples: false,
+      hasWavSamples: true,
+      wavPreferredSampleCount: this.samplesToReturn.length,
+      flacOnlySampleCount: 0,
+      selectedAudioFormat: 'wav_only',
+      audioPreparationPolicy: '优先使用预先转换的16k/mono/PCM WAV；仅有FLAC的样本不纳入可信评测',
+      loadDurationMs: 10
+    };
   }
 }
 
@@ -42,6 +58,8 @@ function createSample(sampleId: string, transcript: string): DatasetSample {
   return {
     sampleId,
     audioPath: `rawfile/dev-clean/${sampleId}.wav`,
+    audioFormat: 'wav',
+    audioPreparation: 'preconverted_16k_mono_pcm_wav',
     transcript,
     speakerId: parts[0],
     chapterId: parts[1],
@@ -78,6 +96,12 @@ export default function libriSpeechEvaluatorTest() {
       expect(summary.successRate).assertEqual(0.5);
       expect(summary.averageWordAccuracy > 0).assertTrue();
       expect(summary.details.length).assertEqual(2);
+      expect(summary.sampleLimit).assertEqual(10);
+      expect(summary.datasetLoadSummary.wavPreferredSampleCount).assertEqual(2);
+      expect(summary.datasetLoadSummary.selectedAudioFormat).assertEqual('wav_only');
+      expect(summary.reportText).assertContain('LibriSpeech 评测报告');
+      expect(summary.details[0].audioFormat).assertEqual('wav');
+      expect(summary.details[0].meetsAccuracyTarget).assertTrue();
     });
 
     it('marks missing audio data as failure', 0, async () => {
@@ -94,6 +118,7 @@ export default function libriSpeechEvaluatorTest() {
       expect(summary.failureCount).assertEqual(1);
       expect(summary.details[0].success).assertFalse();
       expect(summary.details[0].reason).assertContain('音频数据为空');
+      expect(summary.details[0].failureCategory).assertEqual('audio_unavailable');
     });
   });
 }
