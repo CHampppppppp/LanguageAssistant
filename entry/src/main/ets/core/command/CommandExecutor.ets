@@ -43,6 +43,14 @@ export class MockCommandExecutor {
       case VoiceIntent.ACCURACY_EVALUATION:
         return this.openEvaluationPanel(command.intent);
       default:
+        if (command.getEntity('semantic_source') === 'spark_lite_failed') {
+          return {
+            status: CommandExecutionStatus.FAILED,
+            message: '意图识别服务暂时不可用，请稍后重试',
+            intent: command.intent,
+            isSimulated: false
+          };
+        }
         return {
           status: CommandExecutionStatus.UNSUPPORTED,
           message: '抱歉，我不理解您的指令',

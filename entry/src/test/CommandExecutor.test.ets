@@ -257,5 +257,16 @@ export default function commandExecutorTest() {
       expect(result.intent).assertEqual('unknown');
       expect(result.isSimulated).assertFalse();
     });
+
+    it('reports Spark service failure separately from unknown intent', 0, async () => {
+      const executor = new MockCommandExecutor(new FixedTimeProvider());
+      const command = new VoiceCommand(VoiceIntent.UNKNOWN, '把声音调到3');
+      command.setEntity('semantic_source', 'spark_lite_failed');
+
+      const result = await executor.execute(command);
+
+      expect(result.status).assertEqual(CommandExecutionStatus.FAILED);
+      expect(result.message).assertContain('意图识别服务暂时不可用');
+    });
   });
 }

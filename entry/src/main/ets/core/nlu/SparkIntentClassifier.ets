@@ -12,7 +12,7 @@ const SYSTEM_PROMPT: string = '你是语音助手意图分类器。只输出JSON
   'set_alarm,open_app,close_app,accuracy_evaluation,unknown。' +
   '输出格式为{"intent":"unknown","confidence":0.0,"entities":{}}。' +
   'open_app仅支持图库、设置、日历、电话，相册归一化为图库。' +
-  'volume_set实体使用volume_target和volume_unit，unit只能是percent或level。' +
+  'volume_set实体使用volume_target和volume_unit，unit只能是percent或level；裸整数如调到3表示level。' +
   'set_alarm实体使用hour和minute；play_music使用music_name；打开或关闭应用使用app_name。' +
   '不确定时必须返回unknown，禁止猜测。';
 

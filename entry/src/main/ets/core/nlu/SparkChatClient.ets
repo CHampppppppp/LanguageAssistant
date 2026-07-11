@@ -2,7 +2,8 @@ import { http } from '@kit.NetworkKit';
 import { IFlytekConfig } from '../../config/IFlytekConfig';
 import { SparkChatRequest, SparkChatResponse } from './SparkIntentTypes';
 
-const SPARK_TIMEOUT_MS: number = 1500;
+const SPARK_CONNECT_TIMEOUT_MS: number = 2000;
+const SPARK_READ_TIMEOUT_MS: number = 8000;
 
 export interface SparkChatClient {
   complete(request: SparkChatRequest): Promise<SparkChatResponse>;
@@ -20,8 +21,8 @@ export class IFlytekSparkChatClient implements SparkChatClient {
         },
         extraData: JSON.stringify(request),
         expectDataType: http.HttpDataType.STRING,
-        connectTimeout: SPARK_TIMEOUT_MS,
-        readTimeout: SPARK_TIMEOUT_MS
+        connectTimeout: SPARK_CONNECT_TIMEOUT_MS,
+        readTimeout: SPARK_READ_TIMEOUT_MS
       });
       if (response.responseCode < 200 || response.responseCode >= 300) {
         throw new Error(`Spark HTTP 状态码 ${response.responseCode}`);
